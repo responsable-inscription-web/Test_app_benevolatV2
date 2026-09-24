@@ -161,3 +161,29 @@ canvas.signature { width: 100%; height: 150px; border: 1px dashed #B5A78F; borde
   .menu a { padding: 7px 12px; }
   .menu .sep { margin: 10px 0 4px; }
 }
+
+/* Planning global défilant (façon Récap) */
+.defil { overflow: auto; max-height: calc(100vh - 230px); }
+.satellite .defil { max-height: calc(100vh - 200px); }
+.gp { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.gp th, .gp td { min-width: 38px; height: 30px; padding: 0 2px; text-align: center; border-bottom: 1px solid var(--trait2); }
+.gp thead th { position: sticky; background: #fff; z-index: 3; color: var(--doux); font-weight: 500; }
+.gp thead tr:nth-child(1) th { top: 0; height: 24px; }
+.gp thead tr:nth-child(2) th { top: 24px; height: 34px; }
+.gp thead tr:nth-child(3) th { top: 58px; height: 22px; }
+.gp th.mois { text-align: left; padding-left: 8px; font-weight: 700; color: var(--encre); text-transform: capitalize; border-left: 2px solid #CFC5B3; }
+.gp th.aujourdhui { color: #fff; background: var(--accent); border-radius: 6px 6px 0 0; font-weight: 700; }
+.gp .lundi { border-left: 2px solid #CFC5B3; }
+.gp .coin, .gp td.nom { position: sticky; left: 0; background: #fff; z-index: 2; min-width: 200px; max-width: 240px; text-align: left; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.gp thead .coin { z-index: 5; top: 0; vertical-align: bottom; padding-bottom: 6px; color: var(--encre); font-weight: 600; }
+.gp tr.bandeau td { background: var(--neutre); height: 32px; border-top: 8px solid #fff; }
+.gp tr.bandeau td.nom { background: var(--neutre); color: var(--encre); font-size: 15px; }
+.gp td.j { font-weight: 600; font-size: 12px; border-right: 1px solid #fff; }
+.gp td.j.hors { background: #fff; border: 0; border-bottom: 1px solid var(--trait2); }
+.gp .compteur { font-size: 12px; } .gp .compteur .sur { font-weight: 400; opacity: .6; font-size: 10px; }
+.gp .pastev { display: block; background: var(--violet); color: var(--violet-t); border-radius: 4px; font-size: 10px; font-weight: 700; margin: 0 1px; }
+.gp tr.capa td { background: #FBF6EC; } .gp tr.capa input { width: 64px; padding: 2px 6px; min-height: 0; height: 24px; font-size: 13px; }
+.satellite { max-width: 1400px; margin: 0 auto; padding: 22px 20px 40px; }
+.sat-haut { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.sat-haut h1 { margin: 2px 0; } .sat-haut .sur { font-size: 13px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+@media print { .defil { max-height: none; overflow: visible; } }
