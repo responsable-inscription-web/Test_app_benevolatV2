@@ -97,7 +97,7 @@ window.SEED = {
   sejours: [
     { id: 1, benevole: "BEN-00101", arrivee: "2026-09-16", depart: "2026-09-30", heureArrivee: "14:12", heureDepart: "11:00", navette: "Oui", souhaits: ["Restaurant", "Gouvernance"], pole: "Restaurant", statut: "Arrivé·e", canal: "Bouche à oreille", sante: "", repos: ["2026-09-20", "2026-09-21", "2026-09-27", "2026-09-28"], lit: "Dortoir B · lit 2", attestation: null },
     { id: 2, benevole: "BEN-00104", arrivee: "2026-09-12", depart: "2026-10-05", heureArrivee: "", heureDepart: "", navette: "Non", souhaits: ["Restaurant"], pole: "Restaurant", statut: "Arrivé·e", canal: "Workaway", sante: "", repos: ["2026-09-16", "2026-09-17", "2026-09-23", "2026-09-24", "2026-09-30", "2026-10-01"], lit: "Dortoir A · lit 1", attestation: null },
-    { id: 3, benevole: "BEN-00105", arrivee: "2026-09-19", depart: "2026-10-04", heureArrivee: "16:28", heureDepart: "", navette: "Oui", souhaits: ["Restaurant", "Espaces verts"], pole: "Restaurant", statut: "Arrivé·e", canal: "Worldpackers", sante: "", repos: ["2026-09-21", "2026-09-27", "2026-09-28", "2026-10-03"], lit: "Dortoir B · lit 3", attestation: null },
+    { id: 3, affectations: [{ pole: "Gouvernance", debut: "2026-09-30", fin: "2026-10-04" }], benevole: "BEN-00105", arrivee: "2026-09-19", depart: "2026-10-04", heureArrivee: "16:28", heureDepart: "", navette: "Oui", souhaits: ["Restaurant", "Espaces verts"], pole: "Restaurant", statut: "Arrivé·e", canal: "Worldpackers", sante: "", repos: ["2026-09-21", "2026-09-27", "2026-09-28", "2026-10-03"], lit: "Dortoir B · lit 3", attestation: null },
     { id: 4, benevole: "BEN-00106", arrivee: "2026-09-13", depart: "2026-09-25", heureArrivee: "", heureDepart: "", navette: "Non", souhaits: ["Espaces verts"], pole: "Espaces verts", statut: "Arrivé·e", canal: "HelpX", sante: "", repos: ["2026-09-19", "2026-09-20"], lit: "Dortoir A · lit 5",
       attestation: { statut: "signée", jetons: 2, signeLe: "2026-09-24T09:12", jours: { "2026-09-14": "b", "2026-09-15": "b", "2026-09-16": "b", "2026-09-17": "b", "2026-09-18": "b", "2026-09-19": "r", "2026-09-20": "b", "2026-09-21": "b", "2026-09-22": "b", "2026-09-23": "b", "2026-09-24": "b" } } },
     { id: 5, benevole: "BEN-00107", arrivee: "2026-09-10", depart: "2026-09-22", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Gouvernance"], pole: "Gouvernance", statut: "Parti·e", canal: "Déjà venu·e", sante: "", repos: ["2026-09-13", "2026-09-14", "2026-09-19", "2026-09-20"], lit: "",
@@ -121,6 +121,11 @@ window.SEED = {
   kbs: [
     { sejour: 8, date: "2026-09-22", quoi: "Dates", avant: "26/09/2026 → 05/10/2026", apres: "27/09/2026 → 05/10/2026", fait: false },
     { sejour: 7, date: "2026-09-18", quoi: "Navette", avant: "Non", apres: "Oui", fait: true },
+  ],
+
+  // Demandes de changement de dates faites par les bénévoles depuis leur lien personnel.
+  changements: [
+    { id: 1, sejour: 1, date: "2026-09-23", arrivee: "2026-09-16", depart: "2026-10-04", message: "J'aimerais rester pour la retraite de P. Chauvel, si c'est possible.", statut: "en attente" },
   ],
 
   // RDV reçus de Cal.com sans demande correspondante (adresse e-mail différente).
