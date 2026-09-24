@@ -2,7 +2,7 @@
    Les données sont gardées dans le navigateur (localStorage) pour que la démo
    survive à un rechargement. Bouton « Réinitialiser la démo » dans Réglages. */
 (function () {
-  const CLE = "benevolat-cmk-demo-v3";
+  const CLE = "benevolat-cmk-demo-v4";
   const S = {};
 
   S.charger = function () {
@@ -67,6 +67,9 @@
     if (doublon) out.push({ type: "alerte", txt: `Doublon possible : ${doublon.id}` });
     const chevauchement = S.etat.sejours.find((x) => x.benevole === s.benevole && x.id !== s.id && !S.ISSUES.includes(x.statut) && D.chevauche(s.arrivee, s.depart, x.arrivee, x.depart));
     if (chevauchement) out.push({ type: "alerte", txt: "Chevauche un autre séjour" });
+    const sr = S.sansRdvDepuis(s);
+    if (sr !== null && sr >= S.etat.reglages.regles.relanceRdvJours) out.push({ type: "alerte", txt: `Pas de RDV réservé depuis ${sr} j` });
+    if (s.rdv && s.rdv.statut === "annulé" && s.statut === "RDV proposé") out.push({ type: "alerte", txt: "RDV annulé par le bénévole" });
     if (S.dejaVenu(s)) out.push({ type: "ok", txt: "Déjà venu · RDV facultatif" });
     return out;
   };
@@ -99,6 +102,46 @@
     S.tracer(s.id, `À reporter dans KBS : ${quoi} (${avant} → ${apres})`);
   };
   S.kbsAFaire = () => S.etat.kbs.filter((k) => !k.fait);
+
+  // ---------- RDV Cal.com (webhook) ----------
+  // Cal.com prévient l'outil à chaque réservation, déplacement ou annulation.
+  // Le RDV est rattaché à la demande par l'adresse e-mail du bénévole.
+  S.heure = (dt) => `${D.fr(dt.slice(0, 10))} à ${dt.slice(11, 16)}`;
+  S.rdvAVenir = function (jours) {
+    const auj = S.aujourdhui(), fin = D.ajouter(auj, jours);
+    return S.etat.sejours.filter((s) => s.rdv && s.rdv.statut === "planifié" && s.statut === "RDV proposé" && s.rdv.debut.slice(0, 10) >= auj && s.rdv.debut.slice(0, 10) <= fin)
+      .sort((a, b) => a.rdv.debut.localeCompare(b.rdv.debut));
+  };
+  S.sansRdvDepuis = (s) => (s.statut === "RDV proposé" && !s.rdv && s.inviteLe ? D.ecart(s.inviteLe, S.aujourdhui()) : null);
+  S.recevoirWebhook = function (evt) {
+    const b = S.etat.benevoles.find((x) => x.email && x.email.toLowerCase() === evt.email.toLowerCase());
+    const s = b && S.etat.sejours.filter((x) => x.benevole === b.id && ["Reçue", "RDV proposé"].includes(x.statut)).sort((x, y) => x.arrivee.localeCompare(y.arrivee))[0];
+    if (!s) {
+      if (evt.type === "BOOKING_CREATED") S.etat.rdvARattacher.push({ uid: evt.uid, nom: evt.nom, email: evt.email, debut: evt.debut, recuLe: S.aujourdhui() });
+      else { const r = S.etat.rdvARattacher.find((x) => x.uid === evt.uid); if (r) { if (evt.type === "BOOKING_CANCELLED") S.etat.rdvARattacher.splice(S.etat.rdvARattacher.indexOf(r), 1); else r.debut = evt.debut; } }
+      return { rattache: false };
+    }
+    if (evt.type === "BOOKING_CREATED") {
+      if (s.statut === "Reçue") { s.statut = "RDV proposé"; S.tracer(s.id, "Reçue → RDV proposé (RDV pris directement)"); }
+      s.rdv = { debut: evt.debut, uid: evt.uid, statut: "planifié" };
+      S.tracer(s.id, `RDV réservé via Cal.com : ${S.heure(evt.debut)}`);
+    } else if (evt.type === "BOOKING_RESCHEDULED") {
+      const avant = s.rdv ? S.heure(s.rdv.debut) : "?";
+      s.rdv = { ...(s.rdv || {}), debut: evt.debut, uid: evt.uid, statut: "planifié" };
+      S.tracer(s.id, `RDV déplacé via Cal.com : ${avant} → ${S.heure(evt.debut)}`);
+    } else if (evt.type === "BOOKING_CANCELLED") {
+      if (s.rdv) s.rdv.statut = "annulé";
+      S.tracer(s.id, "RDV annulé par le bénévole via Cal.com — coordination prévenue");
+    }
+    return { rattache: true, sejour: s };
+  };
+  S.rattacher = function (i, idS) {
+    const r = S.etat.rdvARattacher[i], s = S.sejour(idS);
+    s.rdv = { debut: r.debut, uid: r.uid, statut: "planifié" };
+    if (s.statut === "Reçue") s.statut = "RDV proposé";
+    S.tracer(s.id, `RDV Cal.com rattaché à la main (réservé avec ${r.email}) : ${S.heure(r.debut)}`);
+    S.etat.rdvARattacher.splice(i, 1);
+  };
 
   // Mail simulé : on l'inscrit dans l'historique (aucun envoi réel dans la démo).
   S.envoyerMail = function (s, cle) {
