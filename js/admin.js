@@ -41,10 +41,28 @@
     return U.entete(`${D.jour(auj)} ${D.fr(auj)}`, "Bonjour, voici la journée", `<a class="btn" href="#/demandes" onclick="A.nouvelleSaisie()">+ Saisie manuelle</a>`) +
       `<div class="grille g4">${tuile("Présents aujourd'hui", presents.length, `pour ${capa} places au total`)}${tuile("Demandes à traiter", aTraiter.length, `${aTraiter.filter((s) => s.statut === "Reçue").length} nouvelles`)}${tuile("Arrivées (7 jours)", arrivees.length, `${navettes} navette(s) sans horaire`)}${tuile("Départs (7 jours)", departs.length, `${signees} attestation(s) signée(s)`)}</div>
       <div class="grille g21"><div><section class="carte"><h2>À traiter en priorité</h2>${items}</section>
+      ${carteChangements()}
       ${carteRdv()}
       ${kbs.length ? `<section class="carte" style="margin-top:16px"><div class="entete" style="margin-bottom:6px"><h2>À reporter dans KBS</h2><a class="btn sec" href="#/kbs">Voir la liste</a></div><div class="doux petit" style="margin-bottom:6px">Modifications faites après l'envoi de la fiche KBS : KBS n'est jamais mis à jour automatiquement.</div>${kbs.slice(0, 3).map(ligneKbs).join("")}</section>` : ""}</div>
       <section class="carte"><h2>Charge des pôles</h2><div class="doux petit" style="margin:-6px 0 12px">Moyenne au travail / capacité, cette semaine</div>${charges}${evts}</section></div>`;
   };
+
+  // Demandes de changement de dates envoyées par les bénévoles depuis leur espace.
+  function carteChangements() {
+    const cs = S.changementsEnAttente(); if (!cs.length) return "";
+    return `<section class="carte" style="margin-top:16px"><h2>Demandes de changement de dates (${cs.length})</h2>${cs.map((c) => { const s = S.sejour(c.sejour), b = S.benevole(s.benevole); return `<div class="item"><div class="qui"><strong>${esc(S.nom(b))}</strong> <span class="doux">· ${esc(s.pole || s.souhaits[0])}</span><div class="petit">${U.periode(s)} → <strong>${U.periode(c)}</strong></div>${c.message ? `<div class="doux petit">« ${esc(c.message)} »</div>` : ""}</div><a class="btn sec" href="#/demandes" onclick="V.choisi=${s.id};V.filtre='tout'">Traiter</a></div>`; }).join("")}</section>`;
+  }
+  function blocChangement(s) {
+    const c = S.changementDe(s.id); if (!c || c.statut !== "en attente") return "";
+    const nouveaux = D.plage(c.arrivee, D.ecart(c.arrivee, c.depart) + 1).filter((j) => j < s.arrivee || j > s.depart);
+    const pole = s.pole || s.souhaits[0];
+    const pleins = nouveaux.filter((j) => S.auTravail(pole, j) >= S.capacite(pole, j)).length;
+    return `<div class="encart"><strong>Demande du bénévole (${D.fr(c.date)})</strong> : ${U.periode(s)} → <strong>${U.periode(c)}</strong>
+      ${c.message ? `<div class="petit" style="margin-top:4px">« ${esc(c.message)} »</div>` : ""}
+      <div class="doux petit" style="margin-top:4px">${nouveaux.length ? `${nouveaux.length} jour(s) en plus · ${pleins ? `${pole} déjà à capacité sur ${pleins} de ces jours` : `${pole} sous la capacité sur ces jours`}` : "Séjour raccourci ou décalé"}${S.ficheKbsEnvoyee(s) ? " · à reporter dans KBS si accepté" : ""}</div>
+      <div class="actions" style="margin-top:8px"><button class="btn" onclick="A.changement(${c.id},true)">Accepter</button><button class="btn sec" onclick="A.changement(${c.id},false)">Refuser</button></div></div>`;
+  }
+  A.changement = function (id, accepte) { S.traiterChangement(id, accepte); ok(accepte ? "Dates changées · mail envoyé au bénévole (simulé)" : "Demande refusée · mail envoyé au bénévole (simulé)"); };
 
   // Bloc « RDV à venir » : alimenté en direct par le webhook Cal.com.
   function carteRdv() {
@@ -69,6 +87,7 @@
     ["acceptees", "Acceptées", (s) => s.statut === "Acceptée"],
     ["alertes", "Avec alerte", (s) => S.enCours(s) && S.alertes(s).some((a) => a.type === "alerte")],
     ["confirmees", "Confirmées", (s) => s.statut === "Confirmée"],
+    ["changements", "Changements de dates", (s) => S.changementsEnAttente().some((x) => x.sejour === s.id)],
     ["attente", "Liste d'attente", (s) => s.statut === "Liste d'attente"],
     ["closes", "Refusées / désistées", (s) => ["Refusée", "Désistée"].includes(s.statut)],
     ["tout", "Tout", () => true],
@@ -89,7 +108,7 @@
     const choisi = S.sejour(V.choisi);
     return U.entete("Parcours des demandes", "Demandes", `<button class="btn" onclick="A.nouvelleSaisie()">+ Saisie manuelle</button>`) +
       `<div class="filtres">${chips}<input type="search" id="recherche" aria-label="Rechercher" placeholder="Nom, e-mail, téléphone" value="${esc(V.recherche)}" oninput="A.chercher(this.value)" style="max-width:280px;margin-left:auto"></div>
-      <div class="duo"><section class="carte" style="padding:8px 16px">${table}</section>${choisi ? panneauDemande(choisi) : `<aside class="carte panneau"><div class="vide">Choisissez une demande pour voir son détail et agir.</div></aside>`}</div>`;
+      <div class="duo"><section class="carte" style="padding:8px 16px">${table}</section>${choisi ? panneauDemande(choisi) : `<aside class="carte panneau"><div class="vide">Choisissez une demande pour voir son détail et agir.</div></aside>`}</div>${dialogueSejour()}`;
   };
 
   function panneauDemande(s) {
@@ -118,15 +137,17 @@
     return `<aside class="carte panneau" aria-label="Détail de la demande">
       <div class="entete" style="align-items:center"><h2><a href="#/benevoles/${b.id}">${esc(S.nom(b))}</a></h2>${U.statutPuce(s.statut)}</div>
       <div class="doux petit">${b.id} · ${esc(b.pays)} · mails en ${b.langue === "FR" ? "français" : "anglais"}</div>
-      ${al.filter((a) => a.type === "alerte").map((a) => `<div class="encart alerte"><strong>${esc(a.txt)}</strong></div>`).join("")}
+      ${al.filter((a) => a.type === "alerte" && a.txt !== "Demande de changement de dates").map((a) => `<div class="encart alerte"><strong>${esc(a.txt)}</strong></div>`).join("")}
+      ${blocChangement(s)}
       <div><div class="ligne"><span>Séjour</span><strong>${U.periode(s)} (${D.ecart(s.arrivee, s.depart)} j)</strong></div>
       <div class="ligne"><span>Souhaits</span><span>${esc(s.souhaits.join(", "))}</span></div>
+      ${(s.affectations || []).length ? `<div class="ligne"><span>Pôles</span><span>${esc(S.texteSegments(s))}</span></div>` : ""}
       ${["RDV proposé", "RDV fait"].includes(s.statut) ? `<div class="ligne"><span>RDV (Cal.com)</span><span>${s.rdv ? (s.rdv.statut === "annulé" ? "annulé par le bénévole" : "<strong>" + S.heure(s.rdv.debut) + "</strong>") : `pas encore réservé${s.inviteLe ? " · invité le " + D.fr(s.inviteLe) : ""}`}</span></div>` : ""}
       <div class="ligne"><span>Canal</span><span>${esc(s.canal)}</span></div>
       <div class="ligne"><span>Navette</span><span>${esc(s.navette)}${s.heureArrivee ? " · " + s.heureArrivee : ""}</span></div>
       <div class="ligne"><span>Téléphone</span><span>${esc(S.telAffiche(b))}</span></div>
       <div class="ligne"><span>Repas</span><span>${esc(b.regime)}</span></div></div>
-      ${edition || `<button class="btn lien" onclick="V.edition=true;R()">Modifier les dates</button>`}
+      ${edition || `<div class="actions"><button class="btn lien" onclick="V.edition=true;R()">Modifier les dates</button>${s.pole ? `<button class="btn lien" onclick="A.ouvrirSejour(${s.id})">Changement de pôle</button>` : ""}</div>`}
       <div style="display:flex;flex-direction:column;gap:8px">${actions}</div>${issues}
       <div class="doux petit" style="border-top:1px solid var(--trait2);padding-top:10px">Historique</div>${hist}</aside>`;
   }
@@ -150,8 +171,9 @@
     S.tracer(id, "Fiche KBS envoyée à benevolat@ (simulé)");
     ok("Séjour confirmé · mail et fiche KBS envoyés (simulés)");
   };
-  A.dates = function (id) {
-    const s = S.sejour(id), a = document.getElementById("e-arr").value, d = document.getElementById("e-dep").value;
+  A.dates = function (id, ia = "e-arr", id2 = "e-dep") {
+    const s = S.sejour(id), a = document.getElementById(ia).value, d = document.getElementById(id2).value;
+    if (a === s.arrivee && d === s.depart) { U.toast("Dates inchangées"); return; }
     if (!a || !d) { U.toast("Dates invalides"); return; }
     // Même contrôle que le formulaire public : fermetures, durée minimale du pôle.
     const refus = S.controles(a, d, s.pole || s.souhaits[0], null, "FR").filter((x) => x.code !== "passe");
@@ -159,6 +181,8 @@
     S.noterKbs(s, "Dates", `${D.fr(s.arrivee)} → ${D.fr(s.depart)}`, `${D.fr(a)} → ${D.fr(d)}`);
     S.tracer(id, `Dates modifiées : ${D.fr(s.arrivee)}–${D.fr(s.depart)} → ${D.fr(a)}–${D.fr(d)}`);
     s.arrivee = a; s.depart = d; s.repos = s.repos.filter((j) => j > a && j < d); V.edition = false;
+    // Les changements de pôle sont ramenés dans les nouvelles dates.
+    s.affectations = (s.affectations || []).map((x) => ({ ...x, debut: x.debut < a ? a : x.debut, fin: x.fin > d ? d : x.fin })).filter((x) => x.debut <= x.fin);
     ok(S.ficheKbsEnvoyee(s) ? "Dates mises à jour · à reporter dans KBS" : "Dates mises à jour");
   };
   A.chercher = function (v) { V.recherche = v; R(); const e = document.getElementById("recherche"); if (e) { e.focus(); e.setSelectionRange(v.length, v.length); } };
@@ -242,7 +266,7 @@
   function plageDefilante(poles) {
     const auj = S.aujourdhui();
     const debut = D.ajouter(D.lundi(auj), -7 * (V.passe || 0));
-    const departs = S.etat.sejours.filter((s) => PRESENTS.includes(s.statut) && poles.includes(s.pole)).map((s) => s.depart);
+    const departs = S.etat.sejours.filter((s) => PRESENTS.includes(s.statut) && S.polesDe(s).some((p) => poles.includes(p))).map((s) => s.depart);
     let fin = departs.reduce((m, d) => (d > m ? d : m), D.ajouter(debut, 27));
     fin = D.ajouter(D.lundi(fin), 6);
     return D.plage(debut, D.ecart(debut, fin) + 1);
@@ -259,7 +283,7 @@
     const nb = jours.length + 1;
     const blocs = poles.map((nom) => {
       const p = S.pole(nom);
-      const ss = S.etat.sejours.filter((s) => s.pole === nom && PRESENTS.includes(s.statut) && s.depart >= jours[0] && s.arrivee <= jours[jours.length - 1]).sort((a, b) => a.arrivee.localeCompare(b.arrivee));
+      const ss = S.etat.sejours.filter((s) => S.polesDe(s).includes(nom) && PRESENTS.includes(s.statut) && s.depart >= jours[0] && s.arrivee <= jours[jours.length - 1]).sort((a, b) => a.arrivee.localeCompare(b.arrivee));
       const bandeau = opts.satellite ? "" : `<tr class="bandeau"><td class="nom" colspan="1"><strong>${esc(nom)}</strong> <a class="petit" href="#/satellite/${encodeURIComponent(nom)}" target="_blank" rel="noopener" title="Vue du responsable de pôle">satellite ↗</a></td><td colspan="${jours.length}"></td></tr>`;
       const capa = opts.satellite ? `<tr class="capa"><td class="nom doux petit">Capacité / jour (semaine)</td>${jours.filter((j) => D.jourSemaine(j) === 1 || j === jours[0]).map((l) => { const n = Math.min(7 - ((D.jourSemaine(l) + 6) % 7), D.ecart(l, jours[jours.length - 1]) + 1); const w = (p.capaSemaines || {})[D.lundi(l)]; return `<td colspan="${n}" class="lundi"><input type="number" min="0" aria-label="Capacité semaine du ${D.court(D.lundi(l))}" value="${w != null ? w : p.capacite}" onchange="A.capaSemaine('${esc(nom)}','${D.lundi(l)}',this.value)"${w != null ? "" : ' title="Capacité par défaut du pôle"'}></td>`; }).join("")}</tr>` : "";
       const compte = `<tr><td class="nom doux petit">Au travail / capacité</td>${jours.map((j) => { const n = S.auTravail(nom, j), cap = S.capacite(nom, j); return `<td class="compteur${lundi(j)} ${n < cap ? "bas" : "bon"}" title="${n} au travail / capacité ${cap}">${n}<span class="sur">/${cap}</span></td>`; }).join("")}</tr>`;
@@ -268,11 +292,13 @@
         const cases = jours.map((j) => {
           const e = S.etatJour(s, j);
           if (!e) return `<td class="j hors${lundi(j)}"></td>`;
+          const ailleurs = S.poleLe(s, j);
+          if (ailleurs !== nom) return `<td class="j ailleurs${lundi(j)}" title="${esc(S.nom(b))} · ${D.fr(j)} : au pôle ${esc(ailleurs)}">${esc(ailleurs.slice(0, 4))}</td>`;
           const txt = { arr: "Arr", dep: "Dép", travail: "✓", repos: "R" }[e];
           const clic = e === "travail" || e === "repos" ? ` onclick="A.repos(${s.id},'${j}')" title="${esc(S.nom(b))} · ${D.fr(j)} : cliquer pour ${e === "repos" ? "retirer" : "poser"} un repos"` : ` title="${e === "arr" ? "Arrivée" + (s.heureArrivee ? " " + s.heureArrivee : "") : "Départ"}"`;
           return `<td class="j ${e}${lundi(j)}"${clic}>${txt}</td>`;
         }).join("");
-        const nomB = opts.satellite ? esc(S.nom(b)) : `<a href="#/benevoles/${b.id}">${esc(S.nom(b))}</a>`;
+        const nomB = opts.satellite ? esc(S.nom(b)) : `<button class="lien-nom" onclick="A.ouvrirSejour(${s.id})" title="Ouvrir le séjour : dates et changements de pôle">${esc(S.nom(b))}</button>`;
         return `<tr><td class="nom">${nomB}${manque ? ` <span title="Repos insuffisants sur ${manque} bloc(s) de 7 jours">${U.puce("repos ?", "alerte")}</span>` : ""}</td>${cases}</tr>`;
       }).join("") || `<tr><td class="nom doux petit">Aucun bénévole confirmé</td><td colspan="${jours.length}"></td></tr>`;
       return bandeau + capa + compte + lignes;
@@ -292,8 +318,8 @@
   }
   A.aujourdhui = () => { V.allerAuj = true; R(); };
   A.passe = (n) => { V.passe = Math.max(0, (V.passe || 0) + n); V.allerAuj = true; R(); };
-  const legendePlanning = () => `<div class="legende"><span><i style="background:var(--ok)"></i>✓ Au travail</span><span><i style="background:var(--repos)"></i>R Repos</span><span><i style="background:var(--info)"></i>Arrivée / départ</span><span><i style="background:var(--violet)"></i>Événement</span>
-      <span class="doux">Cliquer sur un jour pour poser ou retirer un repos. Règle : ${S.etat.reglages.regles.reposParBloc} repos par bloc de 7 jours de présence.</span></div>`;
+  const legendePlanning = () => `<div class="legende"><span><i style="background:var(--ok)"></i>✓ Au travail</span><span><i style="background:var(--repos)"></i>R Repos</span><span><i style="background:var(--info)"></i>Arrivée / départ</span><span><i style="background:var(--violet)"></i>Événement</span><span><i style="background:repeating-linear-gradient(135deg,#F1E6D3,#F1E6D3 3px,#FBF6EC 3px,#FBF6EC 6px)"></i>Dans un autre pôle</span>
+      <span class="doux">Cliquer sur un nom pour ouvrir le séjour (dates, changement de pôle), sur un jour pour poser ou retirer un repos. Règle : ${S.etat.reglages.regles.reposParBloc} repos par bloc de 7 jours de présence.</span></div>`;
 
   window.vuePlanning = function () {
     const poles = S.etat.reglages.poles.filter((p) => p.actif).map((p) => p.nom);
@@ -302,7 +328,52 @@
     return U.entete("Tous les pôles, toutes les semaines à venir", "Planning global",
       `<button class="btn sec" onclick="A.passe(4)">← 4 semaines passées</button>${V.passe ? `<button class="btn sec" onclick="A.passe(-${V.passe})">Masquer le passé</button>` : ""}<button class="btn sec" onclick="A.aujourdhui()">Aujourd'hui</button><button class="btn" onclick="print()">Imprimer</button>`) +
       `<div class="doux petit" style="margin:-8px 0 10px">Du ${D.fr(jours[0])} au ${D.fr(jours[jours.length - 1])} (dernier départ connu). Faites défiler vers la droite pour les semaines suivantes. Chaque responsable a sa propre vue : lien « satellite » à côté du nom du pôle.</div>
-      <section class="carte" style="padding:6px">${grille(poles, jours)}</section>${legendePlanning()}`;
+      <section class="carte" style="padding:6px">${grille(poles, jours)}</section>${legendePlanning()}${dialogueSejour()}`;
+  };
+
+  // =====================================================================
+  // Séjour ouvert depuis le planning (ou une demande) : dates et changements de pôle
+  // =====================================================================
+  function dialogueSejour() {
+    const s = S.sejour(V.sejourOuvert); if (!s) return "";
+    const b = S.benevole(s.benevole), r = S.etat.reglages;
+    const opts = (sel) => r.poles.filter((p) => p.actif).map((p) => `<option ${p.nom === sel ? "selected" : ""}>${esc(p.nom)}</option>`).join("");
+    const segs = S.segmentsPole(s).map((x) => `<div class="ligne"><span>${esc(x.pole)}</span><strong>${D.fr(x.debut)} → ${D.fr(x.fin)}</strong></div>`).join("");
+    const affs = (s.affectations || []).map((a, i) => `<div class="item"><div class="qui">Changement de pôle : <strong>${esc(a.pole)}</strong> du ${D.fr(a.debut)} au ${D.fr(a.fin)}</div><button class="btn lien" onclick="A.retirerAffect(${s.id},${i})">Retirer</button></div>`).join("");
+    const milieu = D.ajouter(s.arrivee, Math.min(7, Math.max(1, D.ecart(s.arrivee, s.depart) - 1)));
+    return `<div class="voile" onclick="if(event.target===this)A.fermerSejour()"><div class="fenetre large" role="dialog" aria-modal="true" aria-labelledby="ds-titre">
+      <div class="entete" style="margin-bottom:6px;align-items:center"><h2 id="ds-titre" style="margin:0">${esc(S.nom(b))}</h2><div style="display:flex;gap:8px;align-items:center">${U.statutPuce(s.statut)}<button class="btn lien" aria-label="Fermer" onclick="A.fermerSejour()">✕</button></div></div>
+      <div class="doux petit">${b.id} · pôle principal ${esc(s.pole || "—")} · <a href="#/benevoles/${b.id}" onclick="A.fermerSejour(true)">fiche complète</a> · <a href="#/demandes" onclick="V.choisi=${s.id};V.filtre='tout';A.fermerSejour(true)">demande</a></div>
+      <h3 class="ds">Dates du séjour</h3>
+      <div class="grille g2"><div><label for="ds-arr">Arrivée</label><input type="date" id="ds-arr" value="${s.arrivee}"></div><div><label for="ds-dep">Départ</label><input type="date" id="ds-dep" value="${s.depart}"></div></div>
+      <div class="actions" style="margin-top:8px"><button class="btn" onclick="A.dates(${s.id},'ds-arr','ds-dep')">Enregistrer les dates</button></div>
+      <h3 class="ds">Pôles pendant le séjour</h3>${segs}${affs}
+      <div class="encart" style="margin-top:10px"><strong>Prévoir un changement de pôle</strong>
+        <div class="grille" style="grid-template-columns:1fr 1fr 1.3fr;gap:8px;margin-top:6px"><div><label for="ds-du">Du</label><input type="date" id="ds-du" min="${s.arrivee}" max="${s.depart}" value="${milieu}"></div><div><label for="ds-au">Au</label><input type="date" id="ds-au" min="${s.arrivee}" max="${s.depart}" value="${s.depart}"></div><div><label for="ds-pole">Pôle</label><select id="ds-pole">${opts(r.poles.find((p) => p.actif && p.nom !== s.pole).nom)}</select></div></div>
+        <div class="actions" style="margin-top:8px"><button class="btn sec" onclick="A.ajoutAffect(${s.id})">Ajouter le changement</button></div></div>
+      ${S.ficheKbsEnvoyee(s) ? `<div class="doux petit" style="margin-top:8px">Fiche KBS déjà envoyée : chaque modification s'ajoute à « À reporter dans KBS ».</div>` : ""}
+    </div></div>`;
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && V.sejourOuvert) A.fermerSejour(); });
+  A.ouvrirSejour = (id) => { V.sejourOuvert = id; R(); const f = document.querySelector(".fenetre.large"); if (f) f.querySelector("input").focus(); };
+  A.fermerSejour = (sansRendu) => { V.sejourOuvert = null; if (!sansRendu) R(); };
+  A.ajoutAffect = function (id) {
+    const s = S.sejour(id), du = document.getElementById("ds-du").value, au = document.getElementById("ds-au").value, pole = document.getElementById("ds-pole").value;
+    if (!du || !au || au < du) { U.toast("Période invalide"); return; }
+    if (du < s.arrivee || au > s.depart) { U.toast("La période doit être comprise dans le séjour"); return; }
+    s.affectations = s.affectations || [];
+    if (s.affectations.some((a) => D.chevauche(du, au, a.debut, a.fin))) { U.toast("Cette période chevauche un autre changement de pôle"); return; }
+    const avant = S.texteSegments(s);
+    s.affectations.push({ pole, debut: du, fin: au }); s.affectations.sort((a, b) => a.debut.localeCompare(b.debut));
+    S.tracer(id, `Changement de pôle prévu : ${pole} du ${D.fr(du)} au ${D.fr(au)}`);
+    S.noterKbs(s, "Pôle", avant, S.texteSegments(s));
+    ok(`Changement de pôle ajouté : ${pole}`);
+  };
+  A.retirerAffect = function (id, i) {
+    const s = S.sejour(id), avant = S.texteSegments(s), a = s.affectations.splice(i, 1)[0];
+    S.tracer(id, `Changement de pôle retiré : ${a.pole} du ${D.fr(a.debut)} au ${D.fr(a.fin)}`);
+    S.noterKbs(s, "Pôle", avant, S.texteSegments(s));
+    ok("Changement de pôle retiré");
   };
 
   // Satellite d'un pôle : la vue du responsable, sans le reste de l'outil.
@@ -311,7 +382,7 @@
     if (!p) return `<div class="public"><div class="vide">Pôle introuvable.</div></div>`;
     const jours = plageDefilante([nom]), auj = S.aujourdhui(), dans7 = D.ajouter(auj, 7);
     defilement();
-    const mouv = S.etat.sejours.filter((s) => s.pole === nom && ["Confirmée", "Arrivé·e"].includes(s.statut) && ((s.arrivee >= auj && s.arrivee <= dans7) || (s.depart >= auj && s.depart <= dans7)))
+    const mouv = S.etat.sejours.filter((s) => S.polesDe(s).includes(nom) && ["Confirmée", "Arrivé·e"].includes(s.statut) && ((s.arrivee >= auj && s.arrivee <= dans7) || (s.depart >= auj && s.depart <= dans7)))
       .map((s) => { const b = S.benevole(s.benevole), arr = s.arrivee >= auj && s.arrivee <= dans7; return { d: arr ? s.arrivee : s.depart, t: `${arr ? "Arrivée" : "Départ"} de <strong>${esc(S.nom(b))}</strong>${arr && s.heureArrivee ? " vers " + s.heureArrivee : ""}` }; })
       .sort((a, b) => a.d.localeCompare(b.d)).map((x) => `<div class="item"><div class="qui">${D.jour(x.d)} ${D.court(x.d)} · ${x.t}</div></div>`).join("") || `<div class="doux petit">Aucun mouvement dans les 7 jours.</div>`;
     return `<div class="satellite"><div class="sat-haut"><div><div class="sur">Satellite · espace responsable de pôle</div><h1>Pôle ${esc(nom)}</h1><div class="doux petit">${esc(p.responsable || "responsable à renseigner")} · même base que la coordination : vos repos sont visibles tout de suite par tous.</div></div>
