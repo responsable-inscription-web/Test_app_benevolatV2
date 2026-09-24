@@ -41,9 +41,23 @@
     return U.entete(`${D.jour(auj)} ${D.fr(auj)}`, "Bonjour, voici la journée", `<a class="btn" href="#/demandes" onclick="A.nouvelleSaisie()">+ Saisie manuelle</a>`) +
       `<div class="grille g4">${tuile("Présents aujourd'hui", presents.length, `pour ${capa} places au total`)}${tuile("Demandes à traiter", aTraiter.length, `${aTraiter.filter((s) => s.statut === "Reçue").length} nouvelles`)}${tuile("Arrivées (7 jours)", arrivees.length, `${navettes} navette(s) sans horaire`)}${tuile("Départs (7 jours)", departs.length, `${signees} attestation(s) signée(s)`)}</div>
       <div class="grille g21"><div><section class="carte"><h2>À traiter en priorité</h2>${items}</section>
+      ${carteRdv()}
       ${kbs.length ? `<section class="carte" style="margin-top:16px"><div class="entete" style="margin-bottom:6px"><h2>À reporter dans KBS</h2><a class="btn sec" href="#/kbs">Voir la liste</a></div><div class="doux petit" style="margin-bottom:6px">Modifications faites après l'envoi de la fiche KBS : KBS n'est jamais mis à jour automatiquement.</div>${kbs.slice(0, 3).map(ligneKbs).join("")}</section>` : ""}</div>
       <section class="carte"><h2>Charge des pôles</h2><div class="doux petit" style="margin:-6px 0 12px">Moyenne au travail / capacité, cette semaine</div>${charges}${evts}</section></div>`;
   };
+
+  // Bloc « RDV à venir » : alimenté en direct par le webhook Cal.com.
+  function carteRdv() {
+    const rdvs = S.rdvAVenir(7), orph = S.etat.rdvARattacher;
+    const lignes = rdvs.map((s) => { const b = S.benevole(s.benevole); return `<div class="item"><div class="qui"><strong>${D.jour(s.rdv.debut.slice(0, 10))} ${D.court(s.rdv.debut.slice(0, 10))} · ${s.rdv.debut.slice(11, 16)}</strong> <span class="doux">· ${esc(S.nom(b))} · ${b.langue} · ${esc(s.souhaits[0])}</span></div><a class="btn sec" href="#/demandes" onclick="V.choisi=${s.id};V.filtre='tout'">Ouvrir</a></div>`; }).join("") || `<div class="doux petit">Aucun RDV dans les 7 jours.</div>`;
+    const cand = S.etat.sejours.filter((s) => ["Reçue", "RDV proposé"].includes(s.statut));
+    const orphs = orph.map((r, i) => `<div class="encart alerte" style="margin-top:8px"><strong>RDV à rattacher</strong> · ${esc(r.nom)} (${esc(r.email)}) · ${S.heure(r.debut)}
+      <div class="doux petit">Réservé avec une adresse inconnue de l'outil.</div>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center"><select id="rat-${i}" aria-label="Demande à rattacher">${cand.map((s) => `<option value="${s.id}">${esc(S.nom(S.benevole(s.benevole)))} · ${U.periode(s)}</option>`).join("")}</select><button class="btn sec" onclick="A.rattacher(${i})">Rattacher</button></div></div>`).join("");
+    return `<section class="carte" style="margin-top:16px"><div class="entete" style="margin-bottom:6px"><h2>RDV à venir</h2><span class="puce ok" title="Mis à jour par Cal.com à chaque réservation">Cal.com · en direct</span></div>${lignes}${orphs}
+      <div class="doux petit" style="margin-top:8px">Démo : <a href="#/reglages" onclick="V.ongletReg='calcom'">simuler une réservation Cal.com</a>.</div></section>`;
+  }
+  A.rattacher = function (i) { S.rattacher(i, Number(document.getElementById("rat-" + i).value)); ok("RDV rattaché à la demande"); };
 
   // =====================================================================
   // Demandes
@@ -107,6 +121,7 @@
       ${al.filter((a) => a.type === "alerte").map((a) => `<div class="encart alerte"><strong>${esc(a.txt)}</strong></div>`).join("")}
       <div><div class="ligne"><span>Séjour</span><strong>${U.periode(s)} (${D.ecart(s.arrivee, s.depart)} j)</strong></div>
       <div class="ligne"><span>Souhaits</span><span>${esc(s.souhaits.join(", "))}</span></div>
+      ${["RDV proposé", "RDV fait"].includes(s.statut) ? `<div class="ligne"><span>RDV (Cal.com)</span><span>${s.rdv ? (s.rdv.statut === "annulé" ? "annulé par le bénévole" : "<strong>" + S.heure(s.rdv.debut) + "</strong>") : `pas encore réservé${s.inviteLe ? " · invité le " + D.fr(s.inviteLe) : ""}`}</span></div>` : ""}
       <div class="ligne"><span>Canal</span><span>${esc(s.canal)}</span></div>
       <div class="ligne"><span>Navette</span><span>${esc(s.navette)}${s.heureArrivee ? " · " + s.heureArrivee : ""}</span></div>
       <div class="ligne"><span>Téléphone</span><span>${esc(S.telAffiche(b))}</span></div>
@@ -122,9 +137,10 @@
     s.statut = statut;
     S.tracer(id, `${avant} → ${statut}`);
     if (mail) S.envoyerMail(s, mail);
+    if (mail === "invitation") s.inviteLe = S.aujourdhui();
     ok(`${S.nom(S.benevole(s.benevole))} : ${statut}`);
   };
-  A.relancer = (id) => { S.envoyerMail(S.sejour(id), "invitation"); ok("Relance envoyée (simulée)"); };
+  A.relancer = (id) => { const s = S.sejour(id); S.envoyerMail(s, "invitation"); s.inviteLe = S.aujourdhui(); ok("Relance envoyée (simulée)"); };
   A.confirmer = function (id) {
     const s = S.sejour(id);
     s.pole = document.getElementById("p-" + id).value;
@@ -382,9 +398,9 @@
   // Réglages
   // =====================================================================
   window.vueReglages = function () {
-    const onglets = [["poles", "Pôles et capacités"], ["fermetures", "Fermetures et événements"], ["formulaire", "Formulaire"], ["regles", "Règles et tarifs"], ["mails", "Modèles de mails"], ["donnees", "Données de démo"]];
+    const onglets = [["poles", "Pôles et capacités"], ["fermetures", "Fermetures et événements"], ["formulaire", "Formulaire"], ["regles", "Règles et tarifs"], ["mails", "Modèles de mails"], ["calcom", "Cal.com"], ["donnees", "Données de démo"]];
     const tabs = onglets.map(([k, t]) => `<button class="onglet ${V.ongletReg === k ? "on" : ""}" onclick="V.ongletReg='${k}';R()">${t}</button>`).join("");
-    return U.entete("Tout ce qui change se règle ici, sans code", "Réglages") + `<div class="onglets">${tabs}</div>` + ({ poles: regPoles, fermetures: regFermetures, formulaire: regFormulaire, regles: regRegles, mails: regMails, donnees: regDonnees }[V.ongletReg])();
+    return U.entete("Tout ce qui change se règle ici, sans code", "Réglages") + `<div class="onglets">${tabs}</div>` + ({ poles: regPoles, fermetures: regFermetures, formulaire: regFormulaire, regles: regRegles, mails: regMails, calcom: regCalcom, donnees: regDonnees }[V.ongletReg])();
   };
   function regPoles() {
     const lignes = S.etat.reglages.poles.map((p, i) => `<tr><td><input type="text" aria-label="Nom du pôle" value="${esc(p.nom)}" onchange="A.pole(${i},'nom',this.value)"></td>
@@ -478,6 +494,31 @@
   A.inserer = function (champ) {
     const ta = document.getElementById("m-corps"), p = ta.selectionStart ?? ta.value.length;
     ta.value = ta.value.slice(0, p) + champ + ta.value.slice(p); A.modele("corps", ta.value); ta.focus();
+  };
+
+  function regCalcom() {
+    const r = S.etat.reglages.regles;
+    const cand = S.etat.sejours.filter((s) => ["Reçue", "RDV proposé"].includes(s.statut));
+    const opts = cand.map((s) => { const b = S.benevole(s.benevole); return `<option value="${esc(b.email)}">${esc(S.nom(b))} — ${esc(b.email)}</option>`; }).join("") + `<option value="inconnu@example.org">Adresse inconnue — inconnu@example.org</option>`;
+    return `<div class="grille g2"><section class="carte"><h2>Connexion Cal.com</h2>
+      <div class="ligne"><span>Adresse de réception (webhook)</span><code>https://benevolat.cmk…/webhooks/calcom</code></div>
+      <div class="ligne"><span>Événements écoutés</span><span>réservation, déplacement, annulation</span></div>
+      <div class="ligne"><span>Rattachement</span><span>par l'adresse e-mail du bénévole</span></div>
+      <div class="ligne"><span>Contrôle de sécurité</span><span>clé secrète partagée avec Cal.com</span></div>
+      <div class="ligne"><span>Rattrapage</span><span>vérification chaque nuit auprès de Cal.com</span></div>
+      <div style="margin-top:10px"><label for="r-relanceRdvJours">Alerte « pas de RDV réservé » après (jours)</label><input type="number" id="r-relanceRdvJours" value="${r.relanceRdvJours}" onchange="A.regle('regles','relanceRdvJours',this.value,'number')"></div></section>
+      <section class="carte"><h2>Simulateur (démo)</h2><div class="doux petit" style="margin:-6px 0 10px">Reproduit ce que Cal.com envoie quand un bénévole réserve, déplace ou annule son RDV.</div>
+      <label for="wh-email">Bénévole (adresse utilisée sur Cal.com)</label><select id="wh-email">${opts}</select>
+      <label for="wh-type">Événement</label><select id="wh-type"><option value="BOOKING_CREATED">Réservation</option><option value="BOOKING_RESCHEDULED">Déplacement</option><option value="BOOKING_CANCELLED">Annulation</option></select>
+      <label for="wh-date">Date et heure du RDV</label><input type="datetime-local" id="wh-date" value="${D.ajouter(S.aujourdhui(), 2)}T10:30">
+      <div class="actions" style="margin-top:12px"><button class="btn" onclick="A.webhook()">Envoyer le webhook (simulé)</button></div></section></div>`;
+  }
+  A.webhook = function () {
+    const email = document.getElementById("wh-email").value, type = document.getElementById("wh-type").value, debut = document.getElementById("wh-date").value;
+    const b = S.etat.benevoles.find((x) => x.email === email);
+    const s0 = b && S.etat.sejours.find((x) => x.benevole === b.id && x.rdv);
+    const res = S.recevoirWebhook({ type, email, debut, uid: (s0 && s0.rdv && type !== "BOOKING_CREATED" ? s0.rdv.uid : "cal-" + Math.random().toString(16).slice(2, 6)), nom: b ? S.nom(b) : "Visiteur inconnu" });
+    ok(res.rattache ? `Webhook reçu · ${S.nom(S.benevole(res.sejour.benevole))} : ${{ BOOKING_CREATED: "RDV réservé", BOOKING_RESCHEDULED: "RDV déplacé", BOOKING_CANCELLED: "RDV annulé" }[type]}` : "Webhook reçu · adresse inconnue : RDV à rattacher (tableau de bord)");
   };
 
   function regDonnees() {
