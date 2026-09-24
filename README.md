@@ -8,7 +8,7 @@ Il sert à **tester les parcours** avec la coordination bénévolat avant de dé
 
 ## Ce qu'on peut tester
 
-Le prototype suit le **document de conception, version 3**. Il montre la **phase 1** (ce qui est validé) et, à part, une démo de la **phase 2** (idée non validée : attestation et remboursement).
+Le prototype suit le **document de conception, version 5**. Il montre la **phase 1** (ce qui est validé) et, à part, une démo de la **phase 2** (idée non validée : attestation et remboursement).
 
 ### Phase 1
 
@@ -17,7 +17,9 @@ Le prototype suit le **document de conception, version 3**. Il montre la **phase
 | Tableau de bord | Présents du jour, demandes à traiter, **RDV à venir mis à jour en direct par Cal.com** et RDV à rattacher, arrivées/départs à 7 jours, charge des pôles, modifications à reporter dans KBS |
 | Demandes | Date du RDV Cal.com, alerte « pas de RDV réservé » et « RDV annulé », filtres par statut, recherche, alertes (doublon, bénévole signalé, chevauchement, déjà venu), passage d'un statut à l'autre, choix du pôle à la confirmation, mails de refus / liste d'attente / désistement (à valider) |
 | Bénévoles | Fiche avec identifiant stable (BEN-xxxxx), tranche d'âge, historique des séjours, commentaires, signalement, export et effacement RGPD |
-| Plannings des pôles | 14 jours par pôle, clic sur une case pour poser/enlever un repos, règle « 2 repos par bloc de 7 jours », **capacité saisie par le responsable semaine par semaine** |
+| Planning global | **Tous les pôles sur une seule page**, jours en colonnes, **défilement horizontal** de la semaine en cours jusqu'au dernier départ connu (on peut remonter dans le passé), dates et noms fixes, bouton « Aujourd'hui », clic sur une case pour poser/enlever un repos |
+| Satellite d'un pôle | Vue déportée du responsable (`#/satellite/Restaurant`) : son seul pôle, **capacité semaine par semaine**, repos, arrivées/départs à 7 jours, impression |
+| Satellite accueil | Vue déportée de l'accueil (`#/satellite-accueil`) : arrivées et départs du jour, pointage, heures, navettes, arrivées à 7 jours |
 | Arrivées et navettes | Arrivées/départs du jour, heure de navette, pointage arrivé·e / parti·e |
 | À reporter dans KBS | KBS ne se met jamais à jour tout seul : chaque modification d'un séjour déjà envoyé à KBS (dates, annulation…) apparaît ici, à cocher une fois ressaisie |
 | Réglages | Pôles (capacité par défaut, **durée minimale par pôle**), fermetures, événements, **textes de la fenêtre de refus** et **tranches d'âge**, règles, modèles de mails FR/EN avec aperçu, **connexion Cal.com et simulateur de webhook**, réinitialisation |
@@ -39,7 +41,7 @@ La date de démo est fixée au **24 septembre 2026**.
 1. **Formulaire public** : choisir des dates début octobre (fermeture) puis envoyer → la fenêtre explique le refus. Essayer 4 jours au Restaurant (8 jours minimum), puis le Studio d'Art (pas de minimum) : la demande part et apparaît dans Demandes.
 2. **Demandes** : ouvrir **Kenji SATO** (Acceptée) → « Confirmer le séjour » en choisissant le pôle. Ouvrir **Anna SCHMIDT** (Reçue) → « Inviter au RDV », ou « Refuser » (mail de refus, à valider).
 3. **Modifier les dates d'un séjour confirmé** (Tout → **Maya COHEN**) : la modification apparaît dans **À reporter dans KBS**. Des dates en fermeture sont refusées, comme dans le formulaire.
-4. **Plannings des pôles** : Restaurant, semaine du 28 sept. : la capacité passe à 2 (saisie par le responsable). La modifier.
+4. **Planning global** : faire défiler les semaines, cliquer sur un jour pour poser un repos. Ouvrir le **satellite Restaurant** (lien à côté du nom du pôle) : la capacité de la semaine du 28 sept. est à 2 (saisie par le responsable) ; la modifier, puis revenir au planning global : c'est pris en compte. Ouvrir aussi le **satellite accueil** (menu « Vues déportées »).
 5. **RDV Cal.com** : **Réglages → Cal.com** → simuler une réservation pour **Sofia ROSSI** (signalée « pas de RDV réservé »), puis une annulation pour **Jonas WEBER** : le tableau de bord et les demandes se mettent à jour. Une adresse inconnue arrive dans « RDV à rattacher ».
 6. **Réglages → Formulaire** : modifier le texte d'un refus, cliquer « Voir la fenêtre ». **Réglages → Pôles** : durée minimale par pôle.
 
