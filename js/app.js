@@ -29,15 +29,17 @@
       case "satellite": html = vueSatellitePole(decodeURIComponent(param || "")); break;
       case "satellite-accueil": html = vueSatelliteAccueil(); break;
       case "kbs": html = U.coquille("kbs", vueKbs()); break;
-      case "espace": html = U.coquille("espace", vueEspace()); break;
+      case "espace": V.espace = "attestation"; html = U.coquille("espace", vueEspace()); break;
+      case "espaces-benevoles": V.espace = "perso"; html = U.coquille("espaces-benevoles", vueEspace()); break;
+      case "mon-sejour": html = vueMonSejour(param); break;
       default: html = U.coquille("", vueTableau());
     }
     racine.innerHTML = html;
     if (window.apres) { const f = window.apres; window.apres = null; f(); }
-    document.title = ({ formulaire: "Demande de séjour", attestation: "Attestation de bénévolat", satellite: "Satellite " + decodeURIComponent(param || ""), "satellite-accueil": "Satellite accueil" }[page] || "Bénévolat") + " · CMK France (prototype)";
+    document.title = ({ formulaire: "Demande de séjour", attestation: "Attestation de bénévolat", "mon-sejour": "Mon séjour", satellite: "Satellite " + decodeURIComponent(param || ""), "satellite-accueil": "Satellite accueil" }[page] || "Bénévolat") + " · CMK France (prototype)";
   }
   let dernier = null;
-  window.addEventListener("hashchange", () => { U.fermerFenetre(); const p = route().page; if (p !== dernier) { V.recherche = ""; V.defil = null; V.allerAuj = true; V.passe = 0; scrollTo(0, 0); } dernier = p; R(); });
+  window.addEventListener("hashchange", () => { U.fermerFenetre(); const p = route().page; if (p !== dernier) { V.sejourOuvert = null; V.recherche = ""; V.defil = null; V.allerAuj = true; V.passe = 0; scrollTo(0, 0); } dernier = p; R(); });
   dernier = route().page;
   R();
 })();
