@@ -2,7 +2,7 @@
    Les données sont gardées dans le navigateur (localStorage) pour que la démo
    survive à un rechargement. Bouton « Réinitialiser la démo » dans Réglages. */
 (function () {
-  const CLE = "benevolat-cmk-demo-v4";
+  const CLE = "benevolat-cmk-demo-v6";
   const S = {};
 
   S.charger = function () {
@@ -70,6 +70,8 @@
     const sr = S.sansRdvDepuis(s);
     if (sr !== null && sr >= S.etat.reglages.regles.relanceRdvJours) out.push({ type: "alerte", txt: `Pas de RDV réservé depuis ${sr} j` });
     if (s.rdv && s.rdv.statut === "annulé" && s.statut === "RDV proposé") out.push({ type: "alerte", txt: "RDV annulé par le bénévole" });
+    const ch = S.etat.changements && S.etat.changements.find((c) => c.sejour === s.id && c.statut === "en attente");
+    if (ch) out.push({ type: "alerte", txt: "Demande de changement de dates" });
     if (S.dejaVenu(s)) out.push({ type: "ok", txt: "Déjà venu · RDV facultatif" });
     return out;
   };
@@ -102,6 +104,27 @@
     S.tracer(s.id, `À reporter dans KBS : ${quoi} (${avant} → ${apres})`);
   };
   S.kbsAFaire = () => S.etat.kbs.filter((k) => !k.fait);
+
+  // ---------- Changement de dates demandé par le bénévole ----------
+  S.changementsEnAttente = () => S.etat.changements.filter((c) => c.statut === "en attente");
+  S.changementDe = (idS) => S.etat.changements.filter((c) => c.sejour === idS).sort((a, b) => b.id - a.id)[0];
+  S.demanderChangement = function (s, arrivee, depart, message) {
+    const id = Math.max(0, ...S.etat.changements.map((c) => c.id)) + 1;
+    S.etat.changements.forEach((c) => { if (c.sejour === s.id && c.statut === "en attente") c.statut = "remplacée"; });
+    S.etat.changements.push({ id, sejour: s.id, date: S.aujourdhui(), arrivee, depart, message, statut: "en attente" });
+    S.tracer(s.id, `Demande de changement de dates par le bénévole : ${D.fr(arrivee)} → ${D.fr(depart)}`);
+  };
+  S.traiterChangement = function (idC, accepte) {
+    const c = S.etat.changements.find((x) => x.id === idC), s = S.sejour(c.sejour);
+    c.statut = accepte ? "acceptée" : "refusée";
+    if (accepte) {
+      S.noterKbs(s, "Dates", `${D.fr(s.arrivee)} → ${D.fr(s.depart)}`, `${D.fr(c.arrivee)} → ${D.fr(c.depart)}`);
+      S.tracer(s.id, `Changement de dates accepté : ${D.fr(s.arrivee)}–${D.fr(s.depart)} → ${D.fr(c.arrivee)}–${D.fr(c.depart)}`);
+      s.arrivee = c.arrivee; s.depart = c.depart; s.repos = s.repos.filter((j) => j > c.arrivee && j < c.depart);
+    } else S.tracer(s.id, "Changement de dates refusé");
+    const b = S.benevole(s.benevole);
+    S.tracer(s.id, `Mail « Changement de dates ${accepte ? "accepté" : "refusé"} » envoyé (${b.langue}) à ${b.email}`);
+  };
 
   // ---------- RDV Cal.com (webhook) ----------
   // Cal.com prévient l'outil à chaque réservation, déplacement ou annulation.
@@ -169,7 +192,20 @@
     if (j === s.depart) return "dep";
     return s.repos.includes(j) ? "repos" : "travail";
   };
-  S.auTravail = (pole, j) => S.etat.sejours.filter((s) => s.pole === pole && S.etatJour(s, j) === "travail").length;
+  // Pôle d'un séjour un jour donné : pôle principal, sauf changement de pôle prévu sur une période.
+  S.poleLe = (s, j) => { const a = (s.affectations || []).find((x) => j >= x.debut && j <= x.fin); return a ? a.pole : s.pole; };
+  S.polesDe = (s) => [...new Set([s.pole, ...(s.affectations || []).map((a) => a.pole)].filter(Boolean))];
+  // Découpage du séjour en périodes par pôle (pour l'affichage).
+  S.segmentsPole = function (s) {
+    const out = [];
+    for (const j of D.plage(s.arrivee, D.ecart(s.arrivee, s.depart) + 1)) {
+      const p = S.poleLe(s, j), der = out[out.length - 1];
+      if (der && der.pole === p) der.fin = j; else out.push({ pole: p, debut: j, fin: j });
+    }
+    return out;
+  };
+  S.texteSegments = (s) => S.segmentsPole(s).map((x) => `${x.pole} du ${D.fr(x.debut)} au ${D.fr(x.fin)}`).join(" · ");
+  S.auTravail = (pole, j) => S.etat.sejours.filter((s) => S.poleLe(s, j) === pole && S.etatJour(s, j) === "travail").length;
   S.presents = (j) => S.etat.sejours.filter((s) => S.presentLe(s, j) && s.statut !== "Parti·e");
   S.evenementLe = (j) => S.etat.reglages.evenements.filter((e) => j >= e.debut && j <= e.fin).map((e) => e.nom).concat(
     S.etat.reglages.fermetures.filter((e) => j >= e.debut && j <= e.fin).map((e) => e.nom));
