@@ -7,7 +7,14 @@
     const [page, param] = chemin.split("/");
     return { page: page || "", param, requete: new URLSearchParams(requete || "") };
   }
+  // Un champ qui perd le focus pendant l'affichage peut relancer R() : on diffère ce second rendu.
+  let enCours = false;
   window.R = function () {
+    if (enCours) { setTimeout(R, 0); return; }
+    enCours = true;
+    try { rendre(); } finally { enCours = false; }
+  };
+  function rendre() {
     const { page, param, requete } = route();
     let html;
     switch (page) {
@@ -19,14 +26,15 @@
       case "arrivees": html = U.coquille("arrivees", vueArrivees()); break;
       case "attestations": html = U.coquille("attestations", vueAttestations()); break;
       case "reglages": html = U.coquille("reglages", vueReglages()); break;
+      case "kbs": html = U.coquille("kbs", vueKbs()); break;
       case "espace": html = U.coquille("espace", vueEspace()); break;
       default: html = U.coquille("", vueTableau());
     }
     racine.innerHTML = html;
     document.title = ({ formulaire: "Demande de séjour", attestation: "Attestation de bénévolat" }[page] || "Bénévolat") + " · CMK France (prototype)";
-  };
+  }
   let dernier = null;
-  window.addEventListener("hashchange", () => { const p = route().page; if (p !== dernier) { V.recherche = ""; scrollTo(0, 0); } dernier = p; R(); });
+  window.addEventListener("hashchange", () => { U.fermerFenetre(); const p = route().page; if (p !== dernier) { V.recherche = ""; scrollTo(0, 0); } dernier = p; R(); });
   dernier = route().page;
   R();
 })();

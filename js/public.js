@@ -6,10 +6,10 @@
   // Formulaire de demande (FR / EN)
   // =====================================================================
   const T = {
-    FR: { titre: "Venir en séjour de bénévolat", intro: "Remplissez ce formulaire : l'équipe bénévolat vous répond sous quelques jours.", ferme: "Le Centre est fermé", vous: "Vous", prenom: "Prénom", nom: "Nom", email: "Adresse e-mail", tel: "Téléphone portable", telAide: "Choisissez l'indicatif de votre pays, puis tapez votre numéro.", genre: "Vous êtes", femme: "Une femme", homme: "Un homme", pays: "Pays de votre passeport", age: "Âge", niveau: "Niveau de français", niv: ["1 · un peu", "2 · correct", "3 · très bien"], sejour: "Votre séjour", arr: "Date d'arrivée", harr: "Heure d'arrivée (gare ou sur place)", dep: "Date de départ", p1: "Pôle souhaité (1er choix)", p2: "2e choix (facultatif)", canal: "Vous venez grâce à", navette: "Navette depuis la gare d'Écommoy ?", nav: ["Oui", "Non", "Je confirmerai plus tard"], sante: "Santé et contact", besoins: "Un besoin particulier (santé, traitement) à signaler ?", urgence: "Contact en cas d'urgence (nom)", urgTel: "Téléphone du contact d'urgence", repas: "Repas", engage: "Engagements", cond: "Je m'engage à respecter les règles de vie du Centre (pas d'alcool, de tabac ni de viande sur la propriété).", rgpd: "J'autorise le CMK France à utiliser mes coordonnées uniquement pour organiser mon séjour. Mes données sont effacées au plus tard 3 ans après mon dernier séjour.", envoyer: "Envoyer ma demande", merci: "Merci, votre demande est bien arrivée !", merciTxt: "Vous allez recevoir un e-mail de confirmation. L'équipe bénévolat revient vers vous rapidement." },
-    EN: { titre: "Come as a volunteer", intro: "Fill in this form: the volunteer team will get back to you within a few days.", ferme: "The Centre is closed", vous: "About you", prenom: "First name", nom: "Family name", email: "Email", tel: "Mobile phone", telAide: "Choose your country code, then type your number.", genre: "You are", femme: "A woman", homme: "A man", pays: "Country of your passport", age: "Age", niveau: "Level of French", niv: ["1 · a little", "2 · fair", "3 · very good"], sejour: "Your stay", arr: "Arrival date", harr: "Arrival time (station or on site)", dep: "Departure date", p1: "Preferred area (1st choice)", p2: "2nd choice (optional)", canal: "You found us through", navette: "Shuttle from Écommoy station?", nav: ["Yes", "No", "I will confirm later"], sante: "Health and contact", besoins: "Any special need (health, treatment) we should know about?", urgence: "Emergency contact (name)", urgTel: "Emergency contact phone", repas: "Meals", engage: "Commitments", cond: "I agree to respect the rules of the Centre (no alcohol, smoking or meat on the premises).", rgpd: "I allow KMC France to use my details only to organise my stay. My data is deleted at the latest 3 years after my last stay.", envoyer: "Send my request", merci: "Thank you, we have received your request!", merciTxt: "You will receive a confirmation email. The volunteer team will get back to you soon." },
+    FR: { titre: "Venir en séjour de bénévolat", intro: "Remplissez ce formulaire : l'équipe bénévolat vous répond sous quelques jours.", ferme: "Le Centre est fermé", vous: "Vous", prenom: "Prénom", nom: "Nom", email: "Adresse e-mail", tel: "Téléphone portable", telAide: "Choisissez l'indicatif de votre pays, puis tapez votre numéro.", genre: "Vous êtes", femme: "Une femme", homme: "Un homme", pays: "Pays de votre passeport", age: "Tranche d'âge", niveau: "Niveau de français", niv: ["1 · un peu", "2 · correct", "3 · très bien"], sejour: "Votre séjour", arr: "Date d'arrivée", harr: "Heure d'arrivée (gare ou sur place)", dep: "Date de départ", p1: "Pôle souhaité (1er choix)", p2: "2e choix (facultatif)", canal: "Vous venez grâce à", navette: "Navette depuis la gare d'Écommoy ?", nav: ["Oui", "Non", "Je confirmerai plus tard"], sante: "Santé et contact", besoins: "Un besoin particulier (santé, traitement) à signaler ?", urgence: "Contact en cas d'urgence (nom)", urgTel: "Téléphone du contact d'urgence", repas: "Repas", engage: "Engagements", cond: "Je m'engage à respecter les règles de vie du Centre (pas d'alcool, de tabac ni de viande sur la propriété).", rgpd: "J'autorise le CMK France à utiliser mes coordonnées uniquement pour organiser mon séjour. Mes données sont effacées au plus tard 3 ans après mon dernier séjour.", envoyer: "Envoyer ma demande", merci: "Merci, votre demande est bien arrivée !", merciTxt: "Vous allez recevoir un e-mail de confirmation. L'équipe bénévolat revient vers vous rapidement." },
+    EN: { titre: "Come as a volunteer", intro: "Fill in this form: the volunteer team will get back to you within a few days.", ferme: "The Centre is closed", vous: "About you", prenom: "First name", nom: "Family name", email: "Email", tel: "Mobile phone", telAide: "Choose your country code, then type your number.", genre: "You are", femme: "A woman", homme: "A man", pays: "Country of your passport", age: "Age group", niveau: "Level of French", niv: ["1 · a little", "2 · fair", "3 · very good"], sejour: "Your stay", arr: "Arrival date", harr: "Arrival time (station or on site)", dep: "Departure date", p1: "Preferred area (1st choice)", p2: "2nd choice (optional)", canal: "You found us through", navette: "Shuttle from Écommoy station?", nav: ["Yes", "No", "I will confirm later"], sante: "Health and contact", besoins: "Any special need (health, treatment) we should know about?", urgence: "Emergency contact (name)", urgTel: "Emergency contact phone", repas: "Meals", engage: "Commitments", cond: "I agree to respect the rules of the Centre (no alcohol, smoking or meat on the premises).", rgpd: "I allow KMC France to use my details only to organise my stay. My data is deleted at the latest 3 years after my last stay.", envoyer: "Send my request", merci: "Thank you, we have received your request!", merciTxt: "You will receive a confirmation email. The volunteer team will get back to you soon." },
   };
-  const F = window.F = { lang: "FR", envoye: null, v: { indicatif: "+33", urgInd: "+33", navette: "Oui", repas: "Végétarien", niveau: "3", age: "30-50", genre: "Une femme", canal: "Workaway" } };
+  const F = window.F = { lang: "FR", envoye: null, v: { indicatif: "+33", urgInd: "+33", navette: "Oui", repas: "Végétarien", niveau: "3", age: "26–35", genre: "Une femme", canal: "Workaway" } };
   const val = (k) => esc(F.v[k] || "");
 
   window.vueFormulaire = function (interne) {
@@ -20,7 +20,7 @@
       return `<div class="public">${haut}<div class="coche"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2F5222" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
         <h1 style="text-align:center">${t.merci}</h1><p style="text-align:center">${t.merciTxt}</p>
         <div class="carte"><div class="doux petit">Ce que voit la coordination (démo)</div><div class="ligne"><span>Fiche</span><strong>${esc(F.envoye.fiche)}</strong></div><div class="ligne"><span>Contrôles</span><span>${F.envoye.alertes || "aucune alerte"}</span></div></div>
-        <div class="actions"><button class="btn sec" onclick="F.envoye=null;F.v={indicatif:'+33',urgInd:'+33',navette:'Oui',repas:'Végétarien',niveau:'3',age:'30-50',genre:'Une femme',canal:'Workaway'};R()">Nouvelle demande</button><a class="btn" href="#/demandes" onclick="V.filtre='recues'">Voir dans les demandes</a></div></div>`;
+        <div class="actions"><button class="btn sec" onclick="F.envoye=null;F.v={indicatif:'+33',urgInd:'+33',navette:'Oui',repas:'Végétarien',niveau:'3',age:'26–35',genre:'Une femme',canal:'Workaway'};R()">Nouvelle demande</button><a class="btn" href="#/demandes" onclick="V.filtre='recues'">Voir dans les demandes</a></div></div>`;
     }
     const ind = (k) => S.INDICATIFS.map(([p, c]) => `<option value="${c}" ${F.v[k] === c ? "selected" : ""}>${esc(p)} ${c}</option>`).join("");
     const poles = (k, vide) => (vide ? `<option value="">—</option>` : "") + r.poles.filter((p) => p.actif).map((p) => `<option ${F.v[k] === p.nom ? "selected" : ""}>${esc(p.nom)}</option>`).join("");
@@ -29,20 +29,20 @@
     const tel = S.telValide(F.v.indicatif, F.v.tel || "");
     const fermetures = r.fermetures.map((f) => `${D.court(f.debut, F.lang)} → ${D.court(f.fin, F.lang)}`).join(" · ");
     return `<div class="public">${haut}<h1>${t.titre}</h1><p class="doux" style="margin:0">${t.intro}</p>
-      <div class="encart">${t.ferme} : ${fermetures}. ${F.lang === "FR" ? `Séjour de ${r.regles.dureeMin} jours minimum.` : `Minimum stay: ${r.regles.dureeMin} days.`}</div>
+      <div class="encart">${t.ferme} : ${fermetures}. ${F.lang === "FR" ? "Durée minimale selon le pôle : 8 jours en général." : "Minimum stay depends on the team: usually 8 days."}</div>
       <section class="carte"><h2>${t.vous}</h2>
         <div class="grille g2"><div>${inp("prenom", t.prenom)}</div><div>${inp("nom", t.nom)}</div></div>
         ${inp("email", t.email, "email")}
         <label for="f-tel">${t.tel}</label><div class="tel"><select aria-label="Indicatif" onchange="F.v.indicatif=this.value;A.majTel()">${ind("indicatif")}</select><input type="tel" id="f-tel" value="${val("tel")}" placeholder="6 12 34 56 78" oninput="F.v.tel=this.value;A.majTel()"></div>
         <div id="tel-etat" class="${F.v.tel ? (tel.ok ? "valide" : "erreur") : "doux petit"}" style="margin-top:6px">${F.v.tel ? (tel.ok ? `✓ ${F.v.indicatif} ${tel.national}` : (F.lang === "FR" ? "Numéro incomplet pour cet indicatif" : "Number incomplete for this country code")) : t.telAide}</div>
         <div role="radiogroup" aria-label="${t.genre}" style="margin-top:8px"><div class="gras petit">${t.genre}</div>${radios("genre", [["Une femme", t.femme], ["Un homme", t.homme]])}</div>
-        <div class="grille g2"><div>${inp("pays", t.pays)}</div><div><label for="f-age">${t.age}</label><select id="f-age" onchange="F.v.age=this.value"><option value="18-30" ${F.v.age === "18-30" ? "selected" : ""}>18–30</option><option value="30-50" ${F.v.age === "30-50" ? "selected" : ""}>30–50</option><option value="50+" ${F.v.age === "50+" ? "selected" : ""}>50 +</option></select></div></div>
+        <div class="grille g2"><div>${inp("pays", t.pays)}</div><div><label for="f-age">${t.age}</label><select id="f-age" onchange="F.v.age=this.value">${r.regles.tranchesAge.map((x, i) => `<option value="${esc(x)}" ${F.v.age === x ? "selected" : ""}>${esc(F.lang === "EN" ? x.replace("Moins de 18 ans", "Under 18").replace("Plus de 65 ans", "Over 65") : x)}</option>`).join("")}</select></div></div>
         <label for="f-niv">${t.niveau}</label><select id="f-niv" onchange="F.v.niveau=this.value">${t.niv.map((n, i) => `<option value="${i + 1}" ${F.v.niveau == i + 1 ? "selected" : ""}>${n}</option>`).join("")}</select></section>
       <section class="carte"><h2>${t.sejour}</h2>
         <div class="grille g2"><div>${inp("arrivee", t.arr, "date", `onchange="A.majDates()"`)}</div><div>${inp("depart", t.dep, "date", `onchange="A.majDates()"`)}</div></div>
         <div id="dates-etat"></div>
         ${inp("heure", t.harr, "time")}
-        <div class="grille g2"><div><label for="f-p1">${t.p1}</label><select id="f-p1" onchange="F.v.p1=this.value">${poles("p1")}</select></div><div><label for="f-p2">${t.p2}</label><select id="f-p2" onchange="F.v.p2=this.value">${poles("p2", true)}</select></div></div>
+        <div class="grille g2"><div><label for="f-p1">${t.p1}</label><select id="f-p1" onchange="F.v.p1=this.value;A.majDates()">${poles("p1")}</select></div><div><label for="f-p2">${t.p2}</label><select id="f-p2" onchange="F.v.p2=this.value">${poles("p2", true)}</select></div></div>
         <label for="f-canal">${t.canal}</label><select id="f-canal" onchange="F.v.canal=this.value">${["Workaway", "Worldpackers", "HelpX", "Bouche à oreille", "Déjà venu·e"].map((c) => `<option ${F.v.canal === c ? "selected" : ""}>${c}</option>`).join("")}</select>
         <div role="radiogroup" aria-label="${t.navette}" style="margin-top:10px"><div class="gras petit">${t.navette}</div>${radios("navette", T.FR.nav.map((n, i) => [n, t.nav[i]]))}<div class="doux petit">${F.lang === "FR" ? `Navette bénévoles ${r.regles.navettePlage}, à réserver ${r.regles.navetteDelaiJours} jours avant.` : `Volunteer shuttle ${r.regles.navettePlage}, to book ${r.regles.navetteDelaiJours} days ahead.`}</div></div></section>
       <section class="carte"><h2>${t.sante}</h2>
@@ -63,15 +63,9 @@
     e.className = t.ok ? "valide" : "erreur";
     e.textContent = t.ok ? `✓ ${F.v.indicatif} ${t.national}` : (F.lang === "FR" ? "Numéro incomplet pour cet indicatif" : "Number incomplete for this country code");
   };
-  function problemesDates(a, d) {
-    const r = S.etat.reglages, out = [];
-    if (!a || !d) return out;
-    if (d <= a) { out.push(F.lang === "FR" ? "La date de départ doit suivre l'arrivée." : "Departure must be after arrival."); return out; }
-    if (a < S.aujourdhui()) out.push(F.lang === "FR" ? "La date d'arrivée est passée." : "Arrival date is in the past.");
-    for (const f of r.fermetures) if (D.chevauche(a, d, f.debut, f.fin)) out.push((F.lang === "FR" ? "Le Centre est fermé du " : "The Centre is closed from ") + `${D.court(f.debut, F.lang)} → ${D.court(f.fin, F.lang)}`);
-    if (F.v.p1 !== r.regles.exceptionDuree && D.ecart(a, d) < r.regles.dureeMin) out.push(F.lang === "FR" ? `Séjour de ${r.regles.dureeMin} jours minimum (vous : ${D.ecart(a, d)}).` : `Minimum stay ${r.regles.dureeMin} days (yours: ${D.ecart(a, d)}).`);
-    return out;
-  }
+  const poleChoisi = () => F.v.p1 || S.etat.reglages.poles.filter((p) => p.actif)[0].nom;
+  // Mêmes règles que la saisie manuelle : S.controles (fermetures, durée minimale du pôle, âge).
+  const problemesDates = (a, d) => S.controles(a, d, poleChoisi(), null, F.lang).map((x) => x.txt);
   A.majDates = function () {
     const p = problemesDates(F.v.arrivee, F.v.depart), e = document.getElementById("dates-etat");
     e.innerHTML = p.map((x) => `<div class="erreur">${esc(x)}</div>`).join("") || (F.v.arrivee && F.v.depart ? `<div class="valide">✓ ${D.ecart(F.v.arrivee, F.v.depart)} ${F.lang === "FR" ? "jours" : "days"}</div>` : "");
@@ -83,9 +77,14 @@
     const tel = S.telValide(v.indicatif, v.tel || "");
     if (!tel.ok) err.push(fr ? "Téléphone : numéro invalide pour l'indicatif choisi." : "Phone: invalid number for this country code.");
     if (!v.arrivee || !v.depart) err.push(fr ? "Dates d'arrivée et de départ obligatoires." : "Arrival and departure dates required.");
-    err.push(...problemesDates(v.arrivee, v.depart));
     if (!v.urgNom) err.push(fr ? "Contact d'urgence obligatoire." : "Emergency contact required.");
     if (!interne && (!v.cond || !v.rgpd)) err.push(fr ? "Merci d'accepter les engagements." : "Please accept the commitments.");
+    // Règles bloquantes : une fenêtre explique pourquoi la demande ne peut pas partir.
+    const refus = S.controles(v.arrivee, v.depart, poleChoisi(), v.age, F.lang);
+    if (refus.length) {
+      U.fenetre(fr ? "Votre demande ne peut pas être envoyée" : "Your request cannot be sent", refus.map((x) => x.txt), fr ? "Modifier ma demande" : "Change my request");
+      return;
+    }
     document.getElementById("f-erreurs").innerHTML = err.map(esc).join("<br>");
     if (err.length) { document.getElementById("f-erreurs").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
 
@@ -94,7 +93,7 @@
     const connu = !!b;
     if (!b) {
       const cap = (x) => x.trim().toLowerCase().replace(/(^|[\s-])\S/g, (m) => m.toUpperCase());
-      b = { id: S.nouvelId(), prenom: cap(v.prenom), nom: v.nom.trim().toUpperCase(), email: v.email.trim(), indicatif: v.indicatif, tel: tel.national, pays: v.pays || "", langue: Number(v.niveau) >= 2 ? "FR" : "EN", regime: v.repas, urgence: `${v.urgNom} ${v.urgInd} ${v.urgTel || ""}`.trim(), commentaires: [], signale: false, motifSignalement: "" };
+      b = { id: S.nouvelId(), prenom: cap(v.prenom), nom: v.nom.trim().toUpperCase(), email: v.email.trim(), indicatif: v.indicatif, tel: tel.national, pays: v.pays || "", langue: Number(v.niveau) >= 2 ? "FR" : "EN", trancheAge: v.age, regime: v.repas, urgence: `${v.urgNom} ${v.urgInd} ${v.urgTel || ""}`.trim(), commentaires: [], signale: false, motifSignalement: "" };
       S.etat.benevoles.push(b);
     }
     const id = Math.max(...S.etat.sejours.map((s) => s.id)) + 1;
@@ -128,7 +127,7 @@
     const nb = Object.keys(a.jours).length ? S.compte(a, "b") : null;
     let corps = "";
     if (AT.etape === 1) {
-      corps = `<h1>${t.bonjour} ${esc(b.prenom)}, ${t.fin} ${D.court(s.depart, AT.lang)}</h1><p style="margin:0;line-height:1.5">${t.intro}</p>
+      corps = `<div class="encart petit">${AT.lang === "FR" ? "Démo de la phase 2 : idée non validée." : "Phase 2 demo: idea not yet approved."}</div><h1>${t.bonjour} ${esc(b.prenom)}, ${t.fin} ${D.court(s.depart, AT.lang)}</h1><p style="margin:0;line-height:1.5">${t.intro}</p>
         <div class="carte"><div class="ligne"><span>${t.sejour}</span><strong>${U.periode(s, AT.lang)}</strong></div><div class="ligne"><span>${t.pole}</span><strong>${esc(s.pole)}</strong></div>
         <div class="ligne"><span>${t.prerempli}</span><strong>${S.compte(a, "b")} ${t.jb} · ${S.compte(a, "r")} ${t.jr}</strong></div><div class="doux petit">${t.preAide}</div></div>
         <div class="encart" style="line-height:1.5">${t.rembourse}<br>${t.nonRemb}</div>
@@ -218,7 +217,7 @@
   window.vueEspace = function () {
     const liste = S.etat.sejours.filter((s) => ["Arrivé·e", "Parti·e"].includes(s.statut)).sort((a, b) => a.depart.localeCompare(b.depart));
     const lignes = liste.map((s) => { const b = S.benevole(s.benevole), a = s.attestation; return `<div class="item"><div class="qui"><strong>${esc(S.nom(b))}</strong> <span class="doux">· départ ${D.court(s.depart)} · ${esc(s.pole)}</span></div>${a ? U.puce(a.statut, a.statut === "en cours" ? "neutre" : "ok") : U.puce("pas commencée", "neutre")}<a class="btn sec" href="#/attestation/${s.id}">Ouvrir le lien</a></div>`; }).join("");
-    return U.entete("Démo : les liens que les bénévoles reçoivent par e-mail", "Liens d'attestation") +
+    return U.entete("Phase 2 · idée à valider — les liens que les bénévoles recevraient par e-mail", "Liens d'attestation") +
       `<div class="encart">Ouvrez un lien sur votre téléphone (ou réduisez la fenêtre) pour tester la justification du bénévolat comme un bénévole. Essayez <strong>Léa Martin</strong>, qui part le 30 septembre.</div>
       <section class="carte">${lignes}</section>`;
   };

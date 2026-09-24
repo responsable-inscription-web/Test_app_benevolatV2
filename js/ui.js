@@ -16,10 +16,25 @@
     setTimeout(() => t.remove(), 2600);
   };
 
+  // Fenêtre (boîte de dialogue) : explique au bénévole pourquoi sa demande ne peut pas partir.
+  U.fenetre = function (titre, lignes, bouton) {
+    U.fermerFenetre();
+    const f = document.createElement("div");
+    f.className = "voile"; f.id = "fenetre";
+    f.innerHTML = `<div class="fenetre" role="dialog" aria-modal="true" aria-labelledby="fenetre-titre"><h2 id="fenetre-titre">${U.esc(titre)}</h2>
+      <ul>${lignes.map((l) => `<li>${U.esc(l)}</li>`).join("")}</ul><button class="btn" onclick="U.fermerFenetre()">${U.esc(bouton)}</button></div>`;
+    f.addEventListener("click", (e) => { if (e.target === f) U.fermerFenetre(); });
+    document.body.appendChild(f);
+    f.querySelector("button").focus();
+  };
+  U.fermerFenetre = () => { const f = document.getElementById("fenetre"); if (f) f.remove(); };
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") U.fermerFenetre(); });
+
   // Coquille de l'espace équipe : menu + contenu.
   U.coquille = function (actif, html) {
     const aTraiter = S.etat.sejours.filter(S.enCours).length;
     const aValider = S.etat.sejours.filter((s) => s.attestation && s.attestation.statut === "signée").length;
+    const kbs = S.kbsAFaire().length;
     const lien = (h, t, extra = "") => `<a href="#/${h}" class="${actif === h ? "actif" : ""}">${t}${extra}</a>`;
     return `<div class="coquille">
       <nav class="menu" aria-label="Navigation principale">
@@ -29,10 +44,12 @@
         ${lien("benevoles", "Bénévoles")}
         ${lien("planning", "Plannings des pôles")}
         ${lien("arrivees", "Arrivées et navettes")}
-        ${lien("attestations", "Attestations", aValider ? `<span class="pastille">${aValider}</span>` : "")}
+        ${lien("kbs", "À reporter dans KBS", kbs ? `<span class="pastille">${kbs}</span>` : "")}
         ${lien("reglages", "Réglages")}
         <div class="sep">Côté bénévole</div>
         ${lien("formulaire", "Formulaire public")}
+        <div class="sep">Phase 2 · idée à valider</div>
+        ${lien("attestations", "Attestations", aValider ? `<span class="pastille">${aValider}</span>` : "")}
         ${lien("espace", "Liens d'attestation")}
         <div class="bas">Date de démo : ${S.D.fr(S.aujourdhui())}</div>
       </nav>

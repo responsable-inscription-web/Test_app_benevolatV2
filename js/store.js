@@ -2,7 +2,7 @@
    Les données sont gardées dans le navigateur (localStorage) pour que la démo
    survive à un rechargement. Bouton « Réinitialiser la démo » dans Réglages. */
 (function () {
-  const CLE = "benevolat-cmk-demo-v1";
+  const CLE = "benevolat-cmk-demo-v3";
   const S = {};
 
   S.charger = function () {
@@ -60,7 +60,8 @@
     const r = S.etat.reglages, out = [];
     const b = S.benevole(s.benevole);
     for (const f of r.fermetures) if (D.chevauche(s.arrivee, s.depart, f.debut, f.fin)) out.push({ type: "alerte", txt: `Fermeture ${D.court(f.debut)} – ${D.court(f.fin)}` });
-    if (s.souhaits[0] !== r.regles.exceptionDuree && D.ecart(s.arrivee, s.depart) < r.regles.dureeMin) out.push({ type: "alerte", txt: `Moins de ${r.regles.dureeMin} jours` });
+    const pDuree = s.pole || s.souhaits[0], min = S.dureeMin(pDuree);
+    if (D.ecart(s.arrivee, s.depart) < min) out.push({ type: "alerte", txt: `Moins de ${min} jours (${pDuree})` });
     if (b && b.signale) out.push({ type: "alerte", txt: "Bénévole signalé" });
     const doublon = S.etat.benevoles.find((x) => x.id !== b.id && ((x.tel && x.tel === b.tel && x.indicatif === b.indicatif) || (x.nom === b.nom && x.prenom.toLowerCase() === b.prenom.toLowerCase())));
     if (doublon) out.push({ type: "alerte", txt: `Doublon possible : ${doublon.id}` });
@@ -69,6 +70,35 @@
     if (S.dejaVenu(s)) out.push({ type: "ok", txt: "Déjà venu · RDV facultatif" });
     return out;
   };
+
+  // Contrôles bloquants du formulaire (et de la saisie manuelle) : renvoie les motifs de refus.
+  S.dureeMin = (nom) => { const p = S.pole(nom); return p && p.dureeMin != null ? p.dureeMin : 8; };
+  S.controles = function (a, d, pole, tranche, lang) {
+    const r = S.etat.reglages, M = r.messagesRefus, L = lang === "EN" ? "EN" : "FR", out = [];
+    const msg = (k, v) => ({ code: k, titre: M[k].nom, txt: M[k][L].replace(/\{(\w+)\}/g, (m, x) => (x in v ? v[x] : m)) });
+    if (tranche && tranche === r.regles.tranchesAge[0]) out.push(msg("age", {}));
+    if (!a || !d) return out;
+    if (d <= a) { out.push(msg("ordre", {})); return out; }
+    if (a < S.aujourdhui()) out.push(msg("passe", {}));
+    for (const f of r.fermetures) if (D.chevauche(a, d, f.debut, f.fin)) out.push(msg("fermeture", { debut: D.court(f.debut, L), fin: D.court(f.fin, L) }));
+    const min = S.dureeMin(pole), n = D.ecart(a, d);
+    if (n < min) out.push(msg("duree", { pole, min, n }));
+    return out;
+  };
+  // Capacité d'un pôle un jour donné : celle saisie par le responsable pour la semaine, sinon la capacité par défaut.
+  S.capacite = function (nom, j) {
+    const p = S.pole(nom); if (!p) return 0;
+    const w = (p.capaSemaines || {})[D.lundi(j)];
+    return w != null ? w : p.capacite;
+  };
+  // KBS n'est jamais mis à jour automatiquement : on note ce qui change après l'envoi de la fiche.
+  S.ficheKbsEnvoyee = (s) => ["Confirmée", "Arrivé·e"].includes(s.statut);
+  S.noterKbs = function (s, quoi, avant, apres) {
+    if (!S.ficheKbsEnvoyee(s) || avant === apres) return;
+    S.etat.kbs.push({ sejour: s.id, date: S.aujourdhui(), quoi, avant, apres, fait: false });
+    S.tracer(s.id, `À reporter dans KBS : ${quoi} (${avant} → ${apres})`);
+  };
+  S.kbsAFaire = () => S.etat.kbs.filter((k) => !k.fait);
 
   // Mail simulé : on l'inscrit dans l'historique (aucun envoi réel dans la démo).
   S.envoyerMail = function (s, cle) {
@@ -126,11 +156,45 @@
       .map(([j, v]) => ({ jour: j, declare: v, planning: s.repos.includes(j) ? "r" : "b" }))
       .filter((e) => e.declare !== "a" && e.declare !== e.planning);
   };
+  // Grilles tarifaires : changement au 1er mars et au 1er septembre (mois réglables).
+  S.MOIS_TARIF = ["03-01", "09-01"];
+  S.grilles = () => S.etat.reglages.tarifs.slice().sort((a, b) => a.debut.localeCompare(b.debut));
+  // Grille en vigueur un jour donné (la plus récente dont le début est passé).
+  S.tarifLe = function (j) {
+    const g = S.grilles(); let t = g[0];
+    for (const x of g) if (x.debut <= j) t = x;
+    return t;
+  };
+  S.finGrille = function (g) {
+    const suiv = S.grilles().find((x) => x.debut > g.debut);
+    return suiv ? D.ajouter(suiv.debut, -1) : null;
+  };
+  // Prochaine date de changement après la dernière grille saisie.
+  S.prochaineGrille = function () {
+    const der = S.grilles().slice(-1)[0].debut; let an = Number(der.slice(0, 4));
+    for (let k = 0; k < 4; k++) { for (const md of S.MOIS_TARIF) { const d = `${an}-${md}`; if (d > der) return d; } an++; }
+  };
+  S.joursBenevolat = function (s) {
+    const att = s.attestation;
+    if (att && Object.keys(att.jours).length) return Object.keys(att.jours).filter((j) => att.jours[j] === "b").sort();
+    return S.joursAttestables(s).filter((j) => !s.repos.includes(j));
+  };
+  // Montant ventilé par grille : un séjour à cheval sur le 1er mars ou le 1er septembre a deux lignes.
   S.montant = function (s) {
-    const t = S.etat.reglages.tarifs, att = s.attestation;
-    if (!att) return null;
-    const jb = Object.keys(att.jours).length ? S.compte(att, "b") : Math.max(0, D.ecart(s.arrivee, s.depart) - 1 - s.repos.length);
-    return { joursBenevolat: jb, nuits: jb * t.nuitDortoir, repas: jb * t.repasJour, lessive: (att.jetons || 0) * t.jetonLessive, total: jb * (t.nuitDortoir + t.repasJour) + (att.jetons || 0) * t.jetonLessive };
+    const att = s.attestation; if (!att) return null;
+    const parGrille = new Map();
+    for (const j of S.joursBenevolat(s)) {
+      const t = S.tarifLe(j);
+      if (!parGrille.has(t.debut)) parGrille.set(t.debut, { grille: t, jours: 0 });
+      parGrille.get(t.debut).jours++;
+    }
+    const lignes = [...parGrille.values()].map((l) => ({ ...l, nuits: l.jours * l.grille.nuitDortoir, repas: l.jours * l.grille.repasJour }));
+    // Jetons de lessive : tarif de la grille en vigueur le jour du départ (règle à valider avec la compta).
+    const tJeton = S.tarifLe(s.depart);
+    const lessive = (att.jetons || 0) * tJeton.jetonLessive;
+    const jb = lignes.reduce((n, l) => n + l.jours, 0);
+    return { joursBenevolat: jb, lignes, tJeton, nuits: lignes.reduce((n, l) => n + l.nuits, 0), repas: lignes.reduce((n, l) => n + l.repas, 0), lessive,
+      total: lignes.reduce((n, l) => n + l.nuits + l.repas, 0) + lessive };
   };
   S.jetonsMax = (s) => Math.max(1, Math.ceil(D.ecart(s.arrivee, s.depart) / 7)) * S.etat.reglages.regles.lessiveMaxParSemaine;
 

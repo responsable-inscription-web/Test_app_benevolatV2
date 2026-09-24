@@ -4,34 +4,61 @@ Prototype cliquable de l'outil de gestion des bénévoles du Centre de Méditati
 Il sert à **tester les parcours** avec la coordination bénévolat avant de développer la vraie version.
 
 > ⚠️ **Données 100 % fictives.** Aucun vrai bénévole, aucun envoi de mail, aucune signature ayant valeur légale.
-> Les tarifs de remboursement (nuitée, repas, jeton de lessive) sont **inventés** et modifiables dans Réglages.
+> Les tarifs de remboursement (phase 2) sont **inventés** et modifiables dans Réglages.
 
 ## Ce qu'on peut tester
 
+Le prototype suit le **document de conception, version 3**. Il montre la **phase 1** (ce qui est validé) et, à part, une démo de la **phase 2** (idée non validée : attestation et remboursement).
+
+### Phase 1
+
 | Écran | Ce qu'il montre |
 |---|---|
-| Tableau de bord | Présents du jour, demandes à traiter, arrivées/départs à 7 jours, alertes |
-| Demandes | Filtres par statut, recherche, alertes automatiques (fermeture, durée, doublon, bénévole signalé, déjà venu), passage d'un statut à l'autre, choix du pôle à la confirmation |
-| Bénévoles | Fiche avec identifiant stable (BEN-xxxxx), historique des séjours, commentaires, signalement, export et effacement RGPD |
-| Plannings des pôles | 14 jours par pôle, clic sur une case pour poser/enlever un repos, contrôle « 2 repos par bloc de 7 jours », capacité cible |
+| Tableau de bord | Présents du jour, demandes à traiter, arrivées/départs à 7 jours, charge des pôles, modifications à reporter dans KBS |
+| Demandes | Filtres par statut, recherche, alertes (doublon, bénévole signalé, chevauchement, déjà venu), passage d'un statut à l'autre, choix du pôle à la confirmation, mails de refus / liste d'attente / désistement (à valider) |
+| Bénévoles | Fiche avec identifiant stable (BEN-xxxxx), tranche d'âge, historique des séjours, commentaires, signalement, export et effacement RGPD |
+| Plannings des pôles | 14 jours par pôle, clic sur une case pour poser/enlever un repos, règle « 2 repos par bloc de 7 jours », **capacité saisie par le responsable semaine par semaine** |
 | Arrivées et navettes | Arrivées/départs du jour, heure de navette, pointage arrivé·e / parti·e |
-| Attestations | Attestations signées à valider, écarts avec le planning à trancher, montant remboursable, transmission à la compta |
-| Réglages | Pôles et capacités, fermetures, événements, règles, tarifs, **modèles de mails FR/EN** avec aperçu, réinitialisation |
-| Formulaire public | Formulaire FR/EN avec **indicatif téléphonique obligatoire** et contrôle des dates en direct |
-| Attestation (téléphone) | Parcours mobile du bénévole : jours de bénévolat / repos / absence, jetons de lessive, signature au doigt, code de confirmation |
+| À reporter dans KBS | KBS ne se met jamais à jour tout seul : chaque modification d'un séjour déjà envoyé à KBS (dates, annulation…) apparaît ici, à cocher une fois ressaisie |
+| Réglages | Pôles (capacité par défaut, **durée minimale par pôle**), fermetures, événements, **textes de la fenêtre de refus** et **tranches d'âge**, règles, modèles de mails FR/EN avec aperçu, réinitialisation |
+| Formulaire public | FR/EN, indicatif téléphonique obligatoire, tranche d'âge. **Envoi bloqué** si les dates touchent une fermeture, si le séjour est trop court pour le pôle choisi ou si la personne a moins de 18 ans : une fenêtre explique pourquoi |
+
+### Phase 2 (idée à valider)
+
+| Écran | Ce qu'il montre |
+|---|---|
+| Attestations | Attestations signées à valider, écarts avec le planning, montant remboursable, grilles tarifaires (1er mars / 1er septembre), envoi à la compta |
+| Attestation (téléphone) | Parcours mobile du bénévole : jours de bénévolat / repos / autre formule, jetons de lessive, signature au doigt, code de confirmation |
 
 ## Scénario de démo (10 minutes)
 
 La date de démo est fixée au **24 septembre 2026**.
 
-1. **Attestation sur téléphone** : Réglages du navigateur en mode mobile (F12 → icône téléphone), ouvrir « Liens d'attestation » puis **Léa MARTIN**. Cocher les jours, signer, saisir le code affiché.
-2. **Attestations** : ouvrir **Hugo LEFÈVRE** (1 écart avec le planning), trancher, valider, puis « Transmettre à la compta ».
-3. **Demandes** : ouvrir **Kenji SATO** (Acceptée) → « Confirmer le séjour » en choisissant le pôle. Ouvrir **Anna SCHMIDT** (Reçue) → « Inviter au RDV ».
-4. **Formulaire public** : essayer des dates pendant la fermeture d'octobre, un numéro trop court, puis envoyer : la demande apparaît dans Demandes.
-5. **Réglages → Modèles de mails** : modifier un texte, insérer un champ `{prénom}`, voir l'aperçu.
-6. **Réglages → Réinitialiser la démo** pour tout remettre à zéro.
+**Phase 1**
+
+1. **Formulaire public** : choisir des dates début octobre (fermeture) puis envoyer → la fenêtre explique le refus. Essayer 4 jours au Restaurant (8 jours minimum), puis le Studio d'Art (pas de minimum) : la demande part et apparaît dans Demandes.
+2. **Demandes** : ouvrir **Kenji SATO** (Acceptée) → « Confirmer le séjour » en choisissant le pôle. Ouvrir **Anna SCHMIDT** (Reçue) → « Inviter au RDV », ou « Refuser » (mail de refus, à valider).
+3. **Modifier les dates d'un séjour confirmé** (Tout → **Maya COHEN**) : la modification apparaît dans **À reporter dans KBS**. Des dates en fermeture sont refusées, comme dans le formulaire.
+4. **Plannings des pôles** : Restaurant, semaine du 28 sept. : la capacité passe à 2 (saisie par le responsable). La modifier.
+5. **Réglages → Formulaire** : modifier le texte d'un refus, cliquer « Voir la fenêtre ». **Réglages → Pôles** : durée minimale par pôle.
+
+**Phase 2**
+
+6. **Attestation sur téléphone** : mode mobile du navigateur (F12 → icône téléphone), « Liens d'attestation » → **Léa MARTIN**. Cocher les jours, signer, saisir le code affiché.
+7. **Attestations** : **Hugo LEFÈVRE** (1 écart avec le planning) → trancher, valider. Onglet « Validées » → **Marc DUBOIS** : séjour à cheval sur deux grilles tarifaires.
+
+**Réglages → Données de démo → Réinitialiser** remet tout à zéro.
 
 Les modifications sont gardées dans le navigateur (localStorage) : elles survivent à un rechargement, mais chaque personne a sa propre copie.
+
+## Grilles tarifaires (phase 2)
+
+La grille de remboursement change **deux fois par an, au 1er mars et au 1er septembre**.
+
+- Chaque grille a une date de début ; elle s'applique jusqu'à la veille de la suivante.
+- Chaque **jour de bénévolat** est remboursé au tarif de la grille en vigueur **ce jour-là** : un séjour à cheval sur un changement donne deux lignes de calcul.
+- Les **jetons de lessive** sont comptés au tarif en vigueur le jour du départ (règle à valider avec la comptabilité).
+- Une grille déjà utilisée par une attestation validée ou transmise est verrouillée, pour ne jamais changer un montant déjà envoyé à la compta.
 
 ## Tester en local
 
@@ -54,7 +81,7 @@ Pas de framework ni de build : HTML + CSS + JavaScript simple.
 index.html        point d'entrée
 css/style.css     charte visuelle (direction A)
 js/data.js        données fictives et réglages de départ
-js/store.js       stockage + règles métier (statuts, alertes, repos, attestations, téléphone)
+js/store.js       stockage + règles métier (statuts, contrôles du formulaire, alertes, capacité, KBS, repos, attestations, téléphone)
 js/ui.js          petits composants d'affichage
 js/admin.js       écrans de l'équipe (coordination, pôles, accueil, compta)
 js/public.js      écrans côté bénévole (formulaire, attestation mobile)
@@ -65,5 +92,6 @@ js/app.js         routeur (#/demandes, #/planning, …)
 
 - Pas de comptes ni de droits : tous les écrans sont visibles par tous.
 - Mails et code de confirmation simulés (le code est affiché à l'écran).
+- La fiche KBS et le report dans KBS sont simulés : rien n'est envoyé à KBS.
 - Données stockées uniquement dans le navigateur, pas de serveur.
 - La signature dessinée n'est pas une signature électronique au sens réglementaire.

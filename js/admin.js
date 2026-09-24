@@ -12,7 +12,8 @@
   window.vueTableau = function () {
     const auj = S.aujourdhui(), dans7 = D.ajouter(auj, 7);
     const presents = S.presents(auj);
-    const capa = S.etat.reglages.poles.filter((p) => p.actif).reduce((t, p) => t + p.capacite, 0);
+    const capa = S.etat.reglages.poles.filter((p) => p.actif).reduce((t, p) => t + S.capacite(p.nom, auj), 0);
+    const kbs = S.kbsAFaire();
     const aTraiter = S.etat.sejours.filter(S.enCours);
     const arrivees = S.etat.sejours.filter((s) => ["Confirmée", "Arrivé·e"].includes(s.statut) && s.arrivee > auj && s.arrivee <= dans7);
     const departs = S.etat.sejours.filter((s) => s.statut === "Arrivé·e" && s.depart >= auj && s.depart <= dans7);
@@ -30,15 +31,17 @@
     const semaine = D.plage(D.lundi(auj), 7);
     const charges = S.etat.reglages.poles.filter((p) => p.actif).map((p) => {
       const moy = Math.round(semaine.reduce((t, j) => t + S.auTravail(p.nom, j), 0) / 7 * 10) / 10;
-      const pct = p.capacite ? Math.min(100, Math.round(moy / p.capacite * 100)) : 0;
-      return `<div style="margin-bottom:12px"><div class="ligne" style="padding:0 0 4px"><span style="color:var(--encre)">${esc(p.nom)}</span><strong>${moy} / ${p.capacite}</strong></div><div class="jauge ${pct < 75 ? "basse" : ""}"><div style="width:${pct}%"></div></div></div>`;
+      const cap = S.capacite(p.nom, auj);
+      const pct = cap ? Math.min(100, Math.round(moy / cap * 100)) : 0;
+      return `<div style="margin-bottom:12px"><div class="ligne" style="padding:0 0 4px"><span style="color:var(--encre)">${esc(p.nom)}</span><strong>${moy} / ${cap}</strong></div><div class="jauge ${pct < 75 ? "basse" : ""}"><div style="width:${pct}%"></div></div></div>`;
     }).join("");
     const evts = S.etat.reglages.evenements.filter((e) => e.fin >= auj).slice(0, 3).map((e) => `<div class="encart" style="margin-top:8px"><strong>${esc(e.nom)}</strong> · ${D.court(e.debut)}${e.fin !== e.debut ? " → " + D.court(e.fin) : ""}</div>`).join("");
 
     const tuile = (t, n, s) => `<div class="carte"><div class="doux">${t}</div><div class="chiffre">${n}</div><div class="doux petit">${s}</div></div>`;
     return U.entete(`${D.jour(auj)} ${D.fr(auj)}`, "Bonjour, voici la journée", `<a class="btn" href="#/demandes" onclick="A.nouvelleSaisie()">+ Saisie manuelle</a>`) +
       `<div class="grille g4">${tuile("Présents aujourd'hui", presents.length, `pour ${capa} places au total`)}${tuile("Demandes à traiter", aTraiter.length, `${aTraiter.filter((s) => s.statut === "Reçue").length} nouvelles`)}${tuile("Arrivées (7 jours)", arrivees.length, `${navettes} navette(s) sans horaire`)}${tuile("Départs (7 jours)", departs.length, `${signees} attestation(s) signée(s)`)}</div>
-      <div class="grille g21"><section class="carte"><h2>À traiter en priorité</h2>${items}</section>
+      <div class="grille g21"><div><section class="carte"><h2>À traiter en priorité</h2>${items}</section>
+      ${kbs.length ? `<section class="carte" style="margin-top:16px"><div class="entete" style="margin-bottom:6px"><h2>À reporter dans KBS</h2><a class="btn sec" href="#/kbs">Voir la liste</a></div><div class="doux petit" style="margin-bottom:6px">Modifications faites après l'envoi de la fiche KBS : KBS n'est jamais mis à jour automatiquement.</div>${kbs.slice(0, 3).map(ligneKbs).join("")}</section>` : ""}</div>
       <section class="carte"><h2>Charge des pôles</h2><div class="doux petit" style="margin:-6px 0 12px">Moyenne au travail / capacité, cette semaine</div>${charges}${evts}</section></div>`;
   };
 
@@ -82,7 +85,7 @@
     const pic = s.pole || s.souhaits[0];
     const jours = D.plage(s.arrivee, D.ecart(s.arrivee, s.depart) + 1);
     const occupMax = Math.max(0, ...jours.map((j) => S.auTravail(pic, j)));
-    const capa = (S.pole(pic) || { capacite: 0 }).capacite;
+    const capa = S.capacite(pic, s.arrivee);
     let actions = "";
     switch (s.statut) {
       case "Reçue": actions = `<button class="btn" onclick="A.statut(${s.id},'RDV proposé','invitation')">Inviter au RDV (${b.langue})</button><button class="btn sec" onclick="A.statut(${s.id},'Acceptée')">Accepter sans RDV</button>`; break;
@@ -94,7 +97,7 @@
       case "Confirmée": actions = `<button class="btn" onclick="A.statut(${s.id},'Arrivé·e')">Marquer arrivé·e</button>`; break;
       case "Liste d'attente": actions = `<button class="btn" onclick="A.statut(${s.id},'Reçue')">Reprendre la demande</button>`; break;
     }
-    const issues = S.enCours(s) || s.statut === "Confirmée" ? `<div class="actions petit"><button class="btn lien" onclick="A.statut(${s.id},'Liste d\\'attente')">Liste d'attente</button><button class="btn lien" onclick="A.statut(${s.id},'Refusée')">Refuser</button><button class="btn lien" onclick="A.statut(${s.id},'Désistée')">Désistement</button></div>` : "";
+    const issues = S.enCours(s) || s.statut === "Confirmée" ? `<div class="actions petit"><button class="btn lien" onclick="A.statut(${s.id},'Liste d\\'attente','attente')">Liste d'attente</button><button class="btn lien" onclick="A.statut(${s.id},'Refusée','refus')">Refuser</button><button class="btn lien" onclick="A.statut(${s.id},'Désistée','desistement')">Désistement</button></div>` : "";
     const edition = V.edition ? `<div class="grille g2"><div><label for="e-arr">Arrivée</label><input type="date" id="e-arr" value="${s.arrivee}"></div><div><label for="e-dep">Départ</label><input type="date" id="e-dep" value="${s.depart}"></div></div>
       <div class="actions"><button class="btn" onclick="A.dates(${s.id})">Enregistrer les dates</button><button class="btn sec" onclick="V.edition=false;R()">Annuler</button></div>` : "";
     const hist = S.historiqueDe(s.id).map((h) => `<div class="petit" style="padding:3px 0"><span class="doux">${D.fr(h.date)}</span> · ${esc(h.texte)}</div>`).join("") || `<div class="doux petit">Aucun événement.</div>`;
@@ -115,6 +118,7 @@
 
   A.statut = function (id, statut, mail) {
     const s = S.sejour(id), avant = s.statut;
+    if (statut === "Désistée" && S.ficheKbsEnvoyee(s)) S.noterKbs(s, "Séjour annulé", avant, "Désistée");
     s.statut = statut;
     S.tracer(id, `${avant} → ${statut}`);
     if (mail) S.envoyerMail(s, mail);
@@ -132,10 +136,14 @@
   };
   A.dates = function (id) {
     const s = S.sejour(id), a = document.getElementById("e-arr").value, d = document.getElementById("e-dep").value;
-    if (!a || !d || d <= a) { U.toast("Dates invalides"); return; }
+    if (!a || !d) { U.toast("Dates invalides"); return; }
+    // Même contrôle que le formulaire public : fermetures, durée minimale du pôle.
+    const refus = S.controles(a, d, s.pole || s.souhaits[0], null, "FR").filter((x) => x.code !== "passe");
+    if (refus.length) { U.fenetre("Ces dates ne sont pas possibles", refus.map((x) => x.txt), "Corriger les dates"); return; }
+    S.noterKbs(s, "Dates", `${D.fr(s.arrivee)} → ${D.fr(s.depart)}`, `${D.fr(a)} → ${D.fr(d)}`);
     S.tracer(id, `Dates modifiées : ${D.fr(s.arrivee)}–${D.fr(s.depart)} → ${D.fr(a)}–${D.fr(d)}`);
     s.arrivee = a; s.depart = d; s.repos = s.repos.filter((j) => j > a && j < d); V.edition = false;
-    ok("Dates mises à jour");
+    ok(S.ficheKbsEnvoyee(s) ? "Dates mises à jour · à reporter dans KBS" : "Dates mises à jour");
   };
   A.chercher = function (v) { V.recherche = v; R(); const e = document.getElementById("recherche"); if (e) { e.focus(); e.setSelectionRange(v.length, v.length); } };
   A.nouvelleSaisie = () => { location.hash = "#/formulaire?interne=1"; };
@@ -221,7 +229,8 @@
     const opts = r.poles.filter((p) => p.actif).map((p) => `<option ${p.nom === pole.nom ? "selected" : ""}>${esc(p.nom)}</option>`).join("");
     const tete = jours.map((j) => `<th class="${j === auj ? "aujourdhui" : ""}">${D.jour(j)}<br><strong style="font-size:14px">${D.court(j)}</strong></th>`).join("");
     const evts = jours.map((j) => { const e = S.evenementLe(j); return `<td>${e.length ? `<div class="evt" title="${esc(e.join(" / "))}">${esc(e[0].replace("Retraite ", "Retr. "))}</div>` : ""}</td>`; }).join("");
-    const compte = jours.map((j) => { const n = S.auTravail(pole.nom, j); return `<td class="compteur ${n < pole.capacite ? "bas" : "bon"}">${n}</td>`; }).join("");
+    const compte = jours.map((j) => { const n = S.auTravail(pole.nom, j), cap = S.capacite(pole.nom, j); return `<td class="compteur ${n < cap ? "bas" : "bon"}" title="${n} au travail / capacité ${cap}">${n}<span class="doux" style="font-weight:400">/${cap}</span></td>`; }).join("");
+    const semaines = [jours[0], jours[7]].map((l) => { const w = (pole.capaSemaines || {})[l]; return `<label class="inline" style="margin:0">Semaine du ${D.court(l)} <input type="number" min="0" style="width:70px" aria-label="Capacité semaine du ${D.court(l)}" value="${w != null ? w : pole.capacite}" onchange="A.capaSemaine('${esc(pole.nom)}','${l}',this.value)">${w != null ? "" : ` <span class="doux petit">(par défaut)</span>`}</label>`; }).join("");
     const lignes = sejours.map((s) => {
       const b = S.benevole(s.benevole);
       const manque = S.blocsRepos(s).filter((x) => !x.ok).length;
@@ -234,17 +243,42 @@
       }).join("");
       return `<tr><td class="nom"><a href="#/benevoles/${b.id}">${esc(S.nom(b))}</a>${manque ? ` <span title="Repos insuffisants sur ${manque} bloc(s) de 7 jours">${U.puce("repos ?", "alerte")}</span>` : ""}</td>${cases}</tr>`;
     }).join("");
-    const bas = jours.filter((j) => S.auTravail(pole.nom, j) < pole.capacite && D.jourSemaine(j) !== 0).length;
+    const bas = jours.filter((j) => S.auTravail(pole.nom, j) < S.capacite(pole.nom, j) && D.jourSemaine(j) !== 0).length;
     return U.entete("Espace responsable de pôle", `${esc(pole.nom)} — du ${D.court(jours[0])} au ${D.court(jours[13])}`,
       `<button class="btn sec" onclick="V.semaine--;R()">← Semaine précédente</button><button class="btn sec" onclick="V.semaine=0;R()">Aujourd'hui</button><button class="btn sec" onclick="V.semaine++;R()">Semaine suivante →</button><button class="btn" onclick="print()">Imprimer</button>`) +
-      `<div class="filtres noprint"><label for="pole" style="margin:0">Pôle</label><select id="pole" style="max-width:240px" onchange="V.pole=this.value;R()">${opts}</select><span class="doux">Capacité : ${pole.capacite} au travail par jour · modifiable dans Réglages</span></div>
+      `<div class="filtres noprint"><label for="pole" style="margin:0">Pôle</label><select id="pole" style="max-width:240px" onchange="V.pole=this.value;R()">${opts}</select></div>
+      <section class="carte noprint" style="padding:12px 18px"><div class="filtres" style="margin:0;align-items:center"><strong>Capacité au travail par jour</strong>${semaines}<span class="doux petit">Saisie par le responsable du pôle, semaine par semaine.</span></div></section>
       <section class="carte planning"><table><thead><tr><th style="text-align:left">Bénévole</th>${tete}</tr></thead><tbody>
         <tr><td class="nom doux petit" style="font-weight:400">Événements</td>${evts}</tr>
-        <tr><td class="nom doux petit" style="font-weight:400">Au travail / ${pole.capacite}</td>${compte}</tr>${lignes}</tbody></table>
+        <tr><td class="nom doux petit" style="font-weight:400">Au travail / capacité</td>${compte}</tr>${lignes}</tbody></table>
         ${sejours.length ? "" : `<div class="vide">Aucun bénévole confirmé sur ces deux semaines.</div>`}</section>
       <div class="legende"><span><i style="background:var(--ok)"></i>Au travail</span><span><i style="background:var(--repos)"></i>Repos</span><span><i style="background:var(--info)"></i>Arrivée / départ</span><span><i style="background:var(--violet)"></i>Événement</span>
         <span class="doux">Règle : ${r.regles.reposParBloc} repos par bloc de 7 jours de présence.</span>${bas ? `<span class="puce alerte">${bas} jour(s) sous la capacité</span>` : ""}</div>`;
   };
+  A.capaSemaine = function (nom, lundi, v) {
+    const p = S.pole(nom); p.capaSemaines = p.capaSemaines || {};
+    if (v === "") delete p.capaSemaines[lundi]; else p.capaSemaines[lundi] = Number(v);
+    ok(`Capacité de la semaine du ${D.court(lundi)} : ${v}`);
+  };
+
+  // =====================================================================
+  // À reporter dans KBS (KBS vit dans son propre système : pas de mise à jour automatique)
+  // =====================================================================
+  function ligneKbs(k) {
+    const s = S.sejour(k.sejour), b = S.benevole(s.benevole), i = S.etat.kbs.indexOf(k);
+    return `<div class="item"><div class="qui"><strong>${esc(S.nom(b))}</strong> <span class="doux">· ${esc(k.quoi)} · modifié le ${D.fr(k.date)}</span>
+      <div class="petit" style="margin-top:4px"><span class="doux">Avant :</span> ${esc(k.avant)} &nbsp; <span class="doux">Maintenant :</span> <strong>${esc(k.apres)}</strong></div></div>
+      <label class="inline" style="margin:0;white-space:nowrap"><input type="checkbox" ${k.fait ? "checked" : ""} onchange="A.kbsFait(${i},this.checked)"> Reporté dans KBS</label></div>`;
+  }
+  window.vueKbs = function () {
+    const afaire = S.kbsAFaire(), faits = S.etat.kbs.filter((k) => k.fait);
+    return U.entete("Espace inscriptions", "À reporter dans KBS") +
+      `<div class="encart">KBS et cet outil ne se synchronisent pas. Quand un séjour change après l'envoi de la fiche KBS (dates, annulation…), il apparaît ici. Cochez une fois la modification ressaisie dans KBS.</div>
+      <section class="carte"><h2>À faire (${afaire.length})</h2>${afaire.map(ligneKbs).join("") || `<div class="vide">Rien à reporter.</div>`}</section>
+      <section class="carte"><h2>Déjà reportées (${faits.length})</h2>${faits.map(ligneKbs).join("") || `<div class="doux petit">Aucune.</div>`}</section>`;
+  };
+  A.kbsFait = (i, v) => { const k = S.etat.kbs[i]; k.fait = v; S.tracer(k.sejour, v ? `Reporté dans KBS : ${k.quoi}` : `Report KBS annulé : ${k.quoi}`); ok(v ? "Noté comme reporté dans KBS" : "Remis à faire"); };
+
   A.repos = function (id, j) {
     const s = S.sejour(id);
     s.repos = s.repos.includes(j) ? s.repos.filter((x) => x !== j) : [...s.repos, j].sort();
@@ -284,7 +318,7 @@
   // Attestations (coordination et compta)
   // =====================================================================
   window.vueAttestations = function () {
-    const t = S.etat.reglages.tarifs;
+    const t = S.tarifLe(S.aujourdhui());
     const tous = S.etat.sejours.filter((s) => ["Arrivé·e", "Parti·e"].includes(s.statut));
     const groupes = {
       "signée": tous.filter((s) => s.attestation && s.attestation.statut === "signée"),
@@ -297,35 +331,37 @@
     const lignes = liste.sort((a, b) => a.depart.localeCompare(b.depart)).map((s) => {
       const b = S.benevole(s.benevole), a = s.attestation, m = a ? S.montant(s) : null, ec = S.ecarts(s).length;
       return `<tr class="clic ${V.choisiAtt === s.id ? "choisi" : ""}" onclick="V.choisiAtt=${s.id};R()"><td><strong>${esc(S.nom(b))}</strong><div class="doux petit">${esc(s.pole)}</div></td><td>${U.periode(s)}</td>
-        <td class="centre">${a && Object.keys(a.jours).length ? S.compte(a, "b") : "—"}</td><td class="centre masquable">${a && Object.keys(a.jours).length ? S.compte(a, "r") : "—"}</td><td class="centre masquable">${a ? a.jetons : "—"}</td>
+        <td class="centre">${a && a.statut !== "en cours" ? S.joursBenevolat(s).length : "—"}</td><td class="centre masquable">${a && Object.keys(a.jours).length ? S.compte(a, "r") : "—"}</td><td class="centre masquable">${a ? a.jetons : "—"}</td>
         <td>${!a || a.statut === "en cours" ? U.puce(s.depart < S.aujourdhui() ? "En retard" : "Départ le " + D.court(s.depart), s.depart < S.aujourdhui() ? "alerte" : "neutre") : ec ? U.puce(ec + " écart(s) avec le planning", "alerte") : U.puce("Conforme au planning", "ok")}</td>
         <td class="num gras">${m && a.statut !== "en cours" ? U.euros(m.total) : "—"}</td></tr>`;
     }).join("");
     const onglets = Object.keys(noms).map((k) => `<button class="filtre ${V.ongletAtt === k ? "on" : ""}" onclick="V.ongletAtt='${k}';V.choisiAtt=null;R()">${noms[k]} (${groupes[k].length})</button>`).join("");
     const choisi = S.sejour(V.choisiAtt);
-    return U.entete("Justification du bénévolat · remboursement des frais de séjour", "Attestations",
+    return U.entete("Phase 2 · idée à valider — justification du bénévolat et remboursement des frais", "Attestations",
       `<a class="btn sec" href="#/reglages" onclick="V.ongletReg='regles'">Tarifs (fictifs)</a>${groupes["validée"].length ? `<button class="btn" onclick="A.transmettre()">Transmettre ${groupes["validée"].length} validée(s) à la compta</button>` : ""}`) +
       `<div class="filtres">${onglets}</div>
       <div class="duo"><section class="carte" style="padding:8px 16px">${liste.length ? `<table class="liste"><thead><tr><th>Bénévole</th><th>Séjour</th><th class="centre">Bénévolat</th><th class="centre masquable">Repos</th><th class="centre masquable">Lessive</th><th>Contrôle</th><th class="num">Remboursable</th></tr></thead><tbody>${lignes}</tbody></table>` : `<div class="vide">Rien ici.</div>`}</section>
-      ${choisi ? panneauAttestation(choisi) : `<aside class="carte panneau"><div class="vide">Choisissez une attestation.</div><div class="doux petit">Tarifs de démonstration : nuitée ${U.euros(t.nuitDortoir)}, repas ${U.euros(t.repasJour)}/jour, jeton ${U.euros(t.jetonLessive)}.</div></aside>`}</div>`;
+      ${choisi ? panneauAttestation(choisi) : `<aside class="carte panneau"><div class="vide">Choisissez une attestation.</div><div class="doux petit">Grille en vigueur depuis le ${D.fr(t.debut)} (fictive) : nuitée ${U.euros(t.nuitDortoir)}, repas ${U.euros(t.repasJour)}/jour, jeton ${U.euros(t.jetonLessive)}.</div></aside>`}</div>`;
   };
 
   function panneauAttestation(s) {
     const b = S.benevole(s.benevole), a = s.attestation;
     if (!a || a.statut === "en cours") return `<aside class="carte panneau"><h2>${esc(S.nom(b))}</h2><div class="doux">Attestation pas encore signée. Départ le ${D.fr(s.depart)}.</div>
       <button class="btn" onclick="A.lienAttestation(${s.id})">Envoyer le lien (${b.langue})</button><a class="btn sec" href="#/attestation/${s.id}">Ouvrir comme le bénévole</a></aside>`;
-    const m = S.montant(s), ec = S.ecarts(s), t = S.etat.reglages.tarifs;
+    const m = S.montant(s), ec = S.ecarts(s);
     const cal = Object.keys(a.jours).length ? `<div class="cal" style="margin:6px 0">${Object.entries(a.jours).map(([j, v]) => { const e = ec.find((x) => x.jour === j); return `<div title="${D.fr(j)}" style="height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--${v === "b" ? "ok" : v === "r" ? "repos" : "violet"});${e ? "outline:2px solid var(--alerte-t)" : ""}">${Number(j.slice(8))}</div>`; }).join("")}</div>` : "";
     const ecarts = ec.map((e) => `<div class="encart alerte">Le ${D.fr(e.jour)} : déclaré <strong>${e.declare === "b" ? "bénévolat" : "repos"}</strong>, planning <strong>${e.planning === "b" ? "travail" : "repos"}</strong>.
       <div class="actions" style="margin-top:6px"><button class="btn lien" onclick="A.trancher(${s.id},'${e.jour}','declare')">Retenir la déclaration</button><button class="btn lien" onclick="A.trancher(${s.id},'${e.jour}','planning')">Retenir le planning</button></div></div>`).join("");
     return `<aside class="carte panneau"><div class="entete" style="align-items:center"><h2>${esc(S.nom(b))}</h2>${U.puce(a.statut, a.statut === "signée" ? "" : "ok")}</div>
       <div class="doux petit">Signée le ${a.signeLe ? D.fr(a.signeLe.slice(0, 10)) + " à " + a.signeLe.slice(11, 16) : "—"} · code e-mail confirmé · ${esc(s.pole)}</div>
       ${cal}${ecarts}
-      <div><div class="ligne"><span>Nuitées en dortoir (${m.joursBenevolat} j × ${U.euros(t.nuitDortoir)})</span><span>${U.euros(m.nuits)}</span></div>
-      <div class="ligne"><span>Repas (${m.joursBenevolat} j × ${U.euros(t.repasJour)})</span><span>${U.euros(m.repas)}</span></div>
-      <div class="ligne"><span>Lessive (${a.jetons} jeton(s))</span><span>${U.euros(m.lessive)}</span></div>
+      <div>${m.lignes.length > 1 ? `<div class="encart" style="margin:6px 0">Séjour à cheval sur deux grilles tarifaires : chaque jour est compté au tarif en vigueur ce jour-là.</div>` : ""}
+      ${m.lignes.map((l) => `${m.lignes.length > 1 ? `<div class="doux petit" style="margin-top:6px;font-weight:600">Grille du ${D.fr(l.grille.debut)}</div>` : ""}
+      <div class="ligne"><span>Nuitées en dortoir (${l.jours} j × ${U.euros(l.grille.nuitDortoir)})</span><span>${U.euros(l.nuits)}</span></div>
+      <div class="ligne"><span>Repas (${l.jours} j × ${U.euros(l.grille.repasJour)})</span><span>${U.euros(l.repas)}</span></div>`).join("")}
+      <div class="ligne"><span>Lessive (${a.jetons} jeton(s) × ${U.euros(m.tJeton.jetonLessive)})</span><span>${U.euros(m.lessive)}</span></div>
       <div class="ligne" style="border-top:1px solid var(--trait2);font-weight:700"><span style="color:var(--encre)">Total remboursable</span><span>${U.euros(m.total)}</span></div></div>
-      <div class="doux petit">Tarifs fictifs de démonstration, réglables dans Réglages.</div>
+      <div class="doux petit">Tarifs fictifs de démonstration, réglables dans Réglages → Règles et tarifs.</div>
       ${a.statut === "signée" ? `<button class="btn" ${ec.length ? "disabled title=\"Trancher d'abord les écarts\"" : ""} onclick="A.valider(${s.id})">Valider l'attestation</button>` : ""}
       <a class="btn sec" href="#/attestation/${s.id}">Voir comme le bénévole</a></aside>`;
   }
@@ -346,17 +382,18 @@
   // Réglages
   // =====================================================================
   window.vueReglages = function () {
-    const onglets = [["poles", "Pôles et capacités"], ["fermetures", "Fermetures et événements"], ["regles", "Règles et tarifs"], ["mails", "Modèles de mails"], ["donnees", "Données de démo"]];
+    const onglets = [["poles", "Pôles et capacités"], ["fermetures", "Fermetures et événements"], ["formulaire", "Formulaire"], ["regles", "Règles et tarifs"], ["mails", "Modèles de mails"], ["donnees", "Données de démo"]];
     const tabs = onglets.map(([k, t]) => `<button class="onglet ${V.ongletReg === k ? "on" : ""}" onclick="V.ongletReg='${k}';R()">${t}</button>`).join("");
-    return U.entete("Tout ce qui change se règle ici, sans code", "Réglages") + `<div class="onglets">${tabs}</div>` + ({ poles: regPoles, fermetures: regFermetures, regles: regRegles, mails: regMails, donnees: regDonnees }[V.ongletReg])();
+    return U.entete("Tout ce qui change se règle ici, sans code", "Réglages") + `<div class="onglets">${tabs}</div>` + ({ poles: regPoles, fermetures: regFermetures, formulaire: regFormulaire, regles: regRegles, mails: regMails, donnees: regDonnees }[V.ongletReg])();
   };
   function regPoles() {
     const lignes = S.etat.reglages.poles.map((p, i) => `<tr><td><input type="text" aria-label="Nom du pôle" value="${esc(p.nom)}" onchange="A.pole(${i},'nom',this.value)"></td>
-      <td style="width:120px"><input type="number" min="0" aria-label="Capacité" value="${p.capacite}" onchange="A.pole(${i},'capacite',Number(this.value))"></td>
+      <td style="width:110px"><input type="number" min="0" aria-label="Capacité par défaut" value="${p.capacite}" onchange="A.pole(${i},'capacite',Number(this.value))"></td>
+      <td style="width:110px"><input type="number" min="0" aria-label="Durée minimale" value="${p.dureeMin ?? 8}" onchange="A.pole(${i},'dureeMin',Number(this.value))"></td>
       <td><input type="email" aria-label="Responsable" value="${esc(p.responsable)}" placeholder="adresse du responsable" onchange="A.pole(${i},'responsable',this.value)"></td>
       <td class="centre"><input type="checkbox" aria-label="Actif" ${p.actif ? "checked" : ""} onchange="A.pole(${i},'actif',this.checked)"></td></tr>`).join("");
-    return `<section class="carte"><h2>Pôles</h2><div class="doux petit" style="margin:-6px 0 10px">La même liste sert au formulaire, aux affectations et aux plannings. Un pôle inactif disparaît du formulaire.</div>
-      <table class="liste"><thead><tr><th>Nom</th><th>Capacité / jour</th><th>Responsable (accès à son planning)</th><th class="centre">Actif</th></tr></thead><tbody>${lignes}</tbody></table>
+    return `<section class="carte"><h2>Pôles</h2><div class="doux petit" style="margin:-6px 0 10px">La même liste sert au formulaire, aux affectations et aux plannings. Un pôle inactif disparaît du formulaire. La durée minimale bloque l'envoi du formulaire (0 = pas de minimum). Les responsables ajustent la capacité semaine par semaine dans leur planning.</div>
+      <table class="liste"><thead><tr><th>Nom</th><th>Capacité par défaut / jour</th><th>Durée min. (jours)</th><th>Responsable (accès à son planning)</th><th class="centre">Actif</th></tr></thead><tbody>${lignes}</tbody></table>
       <div class="actions" style="margin-top:12px"><button class="btn" onclick="A.ajoutPole()">+ Ajouter un pôle</button></div></section>`;
   }
   A.pole = (i, k, v) => { S.etat.reglages.poles[i][k] = v; ok("Pôle mis à jour"); };
@@ -376,16 +413,48 @@
   };
 
   function regRegles() {
-    const r = S.etat.reglages.regles, t = S.etat.reglages.tarifs;
+    const r = S.etat.reglages.regles, auj = S.aujourdhui(), enCoursG = S.tarifLe(auj);
     const champ = (obj, k, lab, type = "number") => `<div><label for="r-${k}">${lab}</label><input type="${type}" id="r-${k}" value="${esc(S.etat.reglages[obj][k])}" onchange="A.regle('${obj}','${k}',this.value,'${type}')"></div>`;
     return `<div class="grille g2"><section class="carte"><h2>Règles</h2><div class="grille g2">
-      ${champ("regles", "dureeMin", "Durée minimale de séjour (jours)")}${champ("regles", "exceptionDuree", "Pôle sans durée minimale", "text")}
       ${champ("regles", "reposParBloc", "Repos par bloc de 7 jours")}${champ("regles", "rappelJours", "Rappel avant l'arrivée (jours)")}
       ${champ("regles", "navettePlage", "Plage de navette bénévoles", "text")}${champ("regles", "navetteDelaiJours", "Réservation navette (jours avant)")}
-      ${champ("regles", "lessiveMaxParSemaine", "Jetons de lessive max / semaine")}${champ("regles", "ageMin", "Âge minimum")}</div></section>
-      <section class="carte"><h2>Tarifs de remboursement</h2><div class="encart alerte" style="margin-bottom:8px">Valeurs fictives pour la démo : à remplacer par les tarifs réduits réels.</div><div class="grille g2">
-      ${champ("tarifs", "nuitDortoir", "Nuitée en dortoir (€)")}${champ("tarifs", "repasJour", "Repas par jour (€)")}${champ("tarifs", "jetonLessive", "Jeton de lessive (€)")}</div></section></div>`;
+      ${champ("regles", "lessiveMaxParSemaine", "Jetons de lessive max / semaine")}</div></section>
+      <section class="carte"><h2>Grilles tarifaires de remboursement</h2>
+      <div class="doux petit" style="margin:-6px 0 10px">La grille change deux fois par an, au 1<sup>er</sup> mars et au 1<sup>er</sup> septembre. Chaque jour de bénévolat est remboursé au tarif en vigueur ce jour-là ; les anciennes grilles restent pour les attestations déjà faites.</div>
+      <div class="encart alerte" style="margin-bottom:8px">Valeurs fictives pour la démo : à remplacer par les tarifs réduits réels.</div>
+      <table class="liste"><thead><tr><th>Période</th><th>Nuitée (€)</th><th>Repas / jour (€)</th><th>Jeton (€)</th><th></th></tr></thead><tbody>
+      ${S.grilles().map((g) => { const i = S.etat.reglages.tarifs.indexOf(g), fin = S.finGrille(g), utilisee = S.etat.sejours.some((s) => s.attestation && ["validée", "transmise"].includes(s.attestation.statut) && S.joursBenevolat(s).some((j) => S.tarifLe(j) === g));
+        const inp = (k) => `<input type="number" step="0.5" min="0" style="max-width:90px" aria-label="${k}" value="${g[k]}" ${utilisee ? "disabled title=\"Grille déjà utilisée par des attestations validées\"" : ""} onchange="A.tarif(${i},'${k}',this.value)">`;
+        return `<tr><td><strong>${D.fr(g.debut)}</strong> → ${fin ? D.fr(fin) : "…"} ${g === enCoursG ? U.puce("En vigueur", "ok") : g.debut > auj ? U.puce("À venir", "neutre") : ""}</td><td>${inp("nuitDortoir")}</td><td>${inp("repasJour")}</td><td>${inp("jetonLessive")}</td>
+          <td>${utilisee ? `<span class="doux petit">verrouillée</span>` : S.grilles().length > 1 ? `<button class="btn lien" onclick="A.retirerGrille(${i})">Retirer</button>` : ""}</td></tr>`; }).join("")}
+      </tbody></table>
+      <div class="actions" style="margin-top:12px"><button class="btn" onclick="A.ajoutGrille()">+ Préparer la grille du ${D.fr(S.prochaineGrille())}</button></div></section></div>`;
   }
+  A.tarif = (i, k, v) => { S.etat.reglages.tarifs[i][k] = Number(v); ok("Tarif enregistré"); };
+  A.ajoutGrille = function () {
+    const der = S.grilles().slice(-1)[0];
+    S.etat.reglages.tarifs.push({ ...der, debut: S.prochaineGrille() });
+    ok("Nouvelle grille créée (tarifs recopiés, à ajuster)");
+  };
+  A.retirerGrille = (i) => { S.etat.reglages.tarifs.splice(i, 1); ok("Grille retirée"); };
+  function regFormulaire() {
+    const r = S.etat.reglages, M = r.messagesRefus;
+    const lignes = Object.entries(M).map(([k, m]) => `<tr><td><strong>${esc(m.nom)}</strong></td>
+      <td><textarea rows="2" aria-label="${esc(m.nom)} (FR)" onchange="A.msgRefus('${k}','FR',this.value)">${esc(m.FR)}</textarea></td>
+      <td><textarea rows="2" aria-label="${esc(m.nom)} (EN)" onchange="A.msgRefus('${k}','EN',this.value)">${esc(m.EN)}</textarea></td></tr>`).join("");
+    return `<section class="carte"><h2>Fenêtre de refus du formulaire</h2>
+      <div class="doux petit" style="margin:-6px 0 10px">Quand une règle n'est pas respectée, la demande ne part pas : une fenêtre explique pourquoi au bénévole. Champs possibles : {debut}, {fin}, {pole}, {min}, {n}.</div>
+      <table class="liste"><thead><tr><th>Cas</th><th>Français</th><th>Anglais</th></tr></thead><tbody>${lignes}</tbody></table>
+      <div class="actions" style="margin-top:12px"><button class="btn sec" onclick="A.apercuRefus()">Voir la fenêtre</button></div></section>
+      <section class="carte"><h2>Tranches d'âge</h2><div class="doux petit" style="margin:-6px 0 10px">Le formulaire demande une tranche d'âge, pas l'âge exact. La première tranche (moins de 18 ans) bloque l'envoi. Une tranche par ligne.</div>
+      <textarea rows="6" aria-label="Tranches d'âge" onchange="A.tranches(this.value)">${esc(r.regles.tranchesAge.join("\n"))}</textarea></section>`;
+  }
+  A.msgRefus = (k, L, v) => { S.etat.reglages.messagesRefus[k][L] = v; ok("Message enregistré"); };
+  A.tranches = (v) => { const t = v.split("\n").map((x) => x.trim()).filter(Boolean); if (t.length < 2) { U.toast("Au moins deux tranches"); return; } S.etat.reglages.regles.tranchesAge = t; ok("Tranches d'âge enregistrées"); };
+  A.apercuRefus = function () {
+    const f = S.etat.reglages.fermetures[0];
+    U.fenetre("Votre demande ne peut pas être envoyée", S.controles(f.debut, D.ajouter(f.debut, 4), "Restaurant", null, "FR").map((x) => x.txt), "Modifier ma demande");
+  };
   A.regle = (obj, k, v, type) => { S.etat.reglages[obj][k] = type === "number" ? Number(v) : v; ok("Réglage enregistré"); };
 
   function regMails() {
