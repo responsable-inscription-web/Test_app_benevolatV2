@@ -42,12 +42,15 @@
         ${lien("", "Tableau de bord")}
         ${lien("demandes", "Demandes", aTraiter ? `<span class="pastille">${aTraiter}</span>` : "")}
         ${lien("benevoles", "Bénévoles")}
-        ${lien("planning", "Plannings des pôles")}
+        ${lien("planning", "Planning global")}
         ${lien("arrivees", "Arrivées et navettes")}
         ${lien("kbs", "À reporter dans KBS", kbs ? `<span class="pastille">${kbs}</span>` : "")}
         ${lien("reglages", "Réglages")}
         <div class="sep">Côté bénévole</div>
         ${lien("formulaire", "Formulaire public")}
+        <div class="sep">Vues déportées</div>
+        <a href="#/satellite/Restaurant" target="_blank" rel="noopener">Satellite Restaurant ↗</a>
+        <a href="#/satellite-accueil" target="_blank" rel="noopener">Satellite accueil ↗</a>
         <div class="sep">Phase 2 · idée à valider</div>
         ${lien("attestations", "Attestations", aValider ? `<span class="pastille">${aValider}</span>` : "")}
         ${lien("espace", "Liens d'attestation")}
