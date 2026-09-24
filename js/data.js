@@ -26,7 +26,7 @@ window.SEED = {
     regles: {
       tranchesAge: ["Moins de 18 ans", "18–25", "26–35", "36–50", "51–65", "Plus de 65 ans"],
       reposParBloc: 2, rappelJours: 10,
-      navettePlage: "12h30–18h30", navetteGare: "gare d'Écommoy", navetteDelaiJours: 3,
+      navettePlage: "12h30–18h30", navetteGare: "gare d'Écommoy", navetteDelaiJours: 3, relanceRdvJours: 5,
       lessiveMaxParSemaine: 1,
     },
     // Grilles tarifaires FICTIVES : une grille par période (changement au 1er mars et au 1er septembre).
@@ -111,9 +111,9 @@ window.SEED = {
     { id: 11, benevole: "BEN-00103", arrivee: "2026-11-05", depart: "2026-11-24", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Restaurant", "Gouvernance"], pole: null, statut: "Reçue", canal: "Workaway", sante: "", repos: [], lit: "", attestation: null },
     { id: 12, benevole: "BEN-00111", arrivee: "2026-10-20", depart: "2026-11-03", heureArrivee: "", heureDepart: "", navette: "Non", souhaits: ["Travaux"], pole: null, statut: "Reçue", canal: "Worldpackers", sante: "", repos: [], lit: "", attestation: null },
     { id: 13, benevole: "BEN-00112", arrivee: "2026-11-03", depart: "2026-11-17", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Gouvernance", "Restaurant"], pole: null, statut: "Reçue", canal: "Bouche à oreille", sante: "", repos: [], lit: "", attestation: null },
-    { id: 14, benevole: "BEN-00113", arrivee: "2026-10-20", depart: "2026-11-10", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Espaces verts"], pole: null, statut: "RDV proposé", canal: "Workaway", sante: "", repos: [], lit: "", attestation: null },
-    { id: 15, benevole: "BEN-00114", arrivee: "2026-10-20", depart: "2026-11-05", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Restaurant"], pole: null, statut: "RDV proposé", canal: "HelpX", sante: "", repos: [], lit: "", attestation: null },
-    { id: 16, benevole: "BEN-00115", arrivee: "2026-10-20", depart: "2026-11-09", heureArrivee: "", heureDepart: "", navette: "Non", souhaits: ["Studio d'Art"], pole: null, statut: "RDV fait", canal: "Bouche à oreille", sante: "", repos: [], lit: "", attestation: null },
+    { id: 14, inviteLe: "2026-09-18", rdv: { debut: "2026-09-25T10:00", uid: "cal-7f3a", statut: "planifié" }, benevole: "BEN-00113", arrivee: "2026-10-20", depart: "2026-11-10", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Espaces verts"], pole: null, statut: "RDV proposé", canal: "Workaway", sante: "", repos: [], lit: "", attestation: null },
+    { id: 15, inviteLe: "2026-09-17", rdv: null, benevole: "BEN-00114", arrivee: "2026-10-20", depart: "2026-11-05", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Restaurant"], pole: null, statut: "RDV proposé", canal: "HelpX", sante: "", repos: [], lit: "", attestation: null },
+    { id: 16, inviteLe: "2026-09-15", rdv: { debut: "2026-09-23T15:30", uid: "cal-2b91", statut: "planifié" }, benevole: "BEN-00115", arrivee: "2026-10-20", depart: "2026-11-09", heureArrivee: "", heureDepart: "", navette: "Non", souhaits: ["Studio d'Art"], pole: null, statut: "RDV fait", canal: "Bouche à oreille", sante: "", repos: [], lit: "", attestation: null },
     { id: 17, benevole: "BEN-00116", arrivee: "2026-11-01", depart: "2026-11-15", heureArrivee: "", heureDepart: "", navette: "Oui", souhaits: ["Restaurant"], pole: null, statut: "Liste d'attente", canal: "Workaway", sante: "", repos: [], lit: "", attestation: null },
   ],
 
@@ -123,12 +123,19 @@ window.SEED = {
     { sejour: 7, date: "2026-09-18", quoi: "Navette", avant: "Non", apres: "Oui", fait: true },
   ],
 
+  // RDV reçus de Cal.com sans demande correspondante (adresse e-mail différente).
+  rdvARattacher: [
+    { uid: "cal-9d04", nom: "Tomás R.", email: "tomas.r.perso@example.net", debut: "2026-09-29T11:00", recuLe: "2026-09-23" },
+  ],
+
   historique: [
     { sejour: 11, date: "2026-09-21", texte: "Demande reçue par le formulaire" },
     { sejour: 12, date: "2026-09-20", texte: "Demande reçue par le formulaire" },
     { sejour: 13, date: "2026-09-22", texte: "Demande reçue par le formulaire" },
     { sejour: 14, date: "2026-09-18", texte: "Mail « Invitation au RDV » envoyé (EN)" },
     { sejour: 15, date: "2026-09-19", texte: "Mail « Invitation au RDV » envoyé (EN)" },
+    { sejour: 14, date: "2026-09-20", texte: "RDV réservé via Cal.com : 25/09/2026 à 10:00" },
+    { sejour: 16, date: "2026-09-16", texte: "RDV réservé via Cal.com : 23/09/2026 à 15:30" },
     { sejour: 16, date: "2026-09-23", texte: "RDV visio réalisé" },
     { sejour: 9, date: "2026-09-22", texte: "Acceptée sans RDV (bénévole déjà venu)" },
     { sejour: 7, date: "2026-09-15", texte: "Confirmée · pôle Restaurant · fiche KBS envoyée" },
