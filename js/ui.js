@@ -48,6 +48,7 @@
         ${lien("reglages", "Réglages")}
         <div class="sep">Côté bénévole</div>
         ${lien("formulaire", "Formulaire public")}
+        ${lien("espaces-benevoles", "Espaces bénévoles", S.changementsEnAttente().length ? `<span class="pastille">${S.changementsEnAttente().length}</span>` : "")}
         <div class="sep">Vues déportées</div>
         <a href="#/satellite/Restaurant" target="_blank" rel="noopener">Satellite Restaurant ↗</a>
         <a href="#/satellite-accueil" target="_blank" rel="noopener">Satellite accueil ↗</a>
