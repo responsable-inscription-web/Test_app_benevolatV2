@@ -131,7 +131,8 @@
         <div class="carte"><div class="ligne"><span>${t.sejour}</span><strong>${U.periode(s, AT.lang)}</strong></div><div class="ligne"><span>${t.pole}</span><strong>${esc(s.pole)}</strong></div>
         <div class="ligne"><span>${t.prerempli}</span><strong>${S.compte(a, "b")} ${t.jb} · ${S.compte(a, "r")} ${t.jr}</strong></div><div class="doux petit">${t.preAide}</div></div>
         <div class="encart" style="line-height:1.5">${t.rembourse}<br>${t.nonRemb}</div>
-        <button class="btn" style="min-height:52px" onclick="AT.etape=2;R();scrollTo(0,0)">${t.commencer}</button>`;
+        <button class="btn" style="min-height:52px" onclick="AT.etape=2;R();scrollTo(0,0)">${t.commencer}</button>
+        ${s.statut === "Arrivé·e" ? `<div class="carte" style="text-align:center"><div class="doux petit">${AT.lang === "FR" ? "Vous souhaitez rester plus longtemps ou partir plus tôt ?" : "Would you like to stay longer or leave earlier?"}</div><a class="btn sec" style="margin-top:8px;width:100%" href="#/mon-sejour/${s.id}">${AT.lang === "FR" ? "Prolonger ou changer mes dates" : "Extend or change my dates"}</a></div>` : ""}`;
     } else if (AT.etape === 2) {
       const jours = S.joursAttestables(s);
       const decal = (D.jourSemaine(s.arrivee) + 6) % 7;
@@ -214,9 +215,50 @@
   // =====================================================================
   // Page « liens d'attestation » (démo : simule les liens reçus par e-mail)
   // =====================================================================
+  // =====================================================================
+  // Espace personnel du bénévole (lien reçu par e-mail) : demander un changement de dates
+  // =====================================================================
+  const TM = {
+    FR: { titre: "Mon séjour", bonjour: "Bonjour", sejour: "Séjour", pole: "Pôle", statut: "Statut", changer: "Prolonger ou changer mes dates", aide: "Votre demande est envoyée à l'équipe bénévolat, qui vous répond par e-mail. Vos dates ne changent qu'une fois la demande acceptée.", arr: "Nouvelle date d'arrivée", dep: "Nouvelle date de départ", msg: "Un mot pour l'équipe (facultatif)", envoyer: "Envoyer ma demande", attente: "Demande en attente", acceptee: "Demande acceptée", refusee: "Demande refusée", demande: "Vous avez demandé", envoye: "Demande envoyée ! L'équipe vous répond par e-mail.", pareil: "Ce sont déjà vos dates.", refus: "Votre demande ne peut pas être envoyée", modifier: "Modifier ma demande", arrive: "Vous êtes déjà sur place : seule la date de départ peut changer." },
+    EN: { titre: "My stay", bonjour: "Hello", sejour: "Stay", pole: "Team", statut: "Status", changer: "Extend or change my dates", aide: "Your request goes to the volunteer team, who will reply by email. Your dates only change once the request is accepted.", arr: "New arrival date", dep: "New departure date", msg: "A note for the team (optional)", envoyer: "Send my request", attente: "Request pending", acceptee: "Request accepted", refusee: "Request declined", demande: "You asked for", envoye: "Request sent! The team will reply by email.", pareil: "These are already your dates.", refus: "Your request cannot be sent", modifier: "Change my request", arrive: "You are already on site: only the departure date can change." },
+  };
+  const MS = window.MS = { id: null, lang: "FR" };
+  window.vueMonSejour = function (id) {
+    const s = S.sejour(id);
+    if (!s) return `<div class="public"><div class="vide">Lien invalide.</div></div>`;
+    const b = S.benevole(s.benevole);
+    if (MS.id !== s.id) Object.assign(MS, { id: s.id, lang: b.langue });
+    const t = TM[MS.lang], c = S.changementDe(s.id), surPlace = s.statut === "Arrivé·e";
+    const langue = `<span class="langue" role="group" aria-label="Langue"><button class="${MS.lang === "FR" ? "on" : ""}" onclick="MS.lang='FR';R()">FR</button><button class="${MS.lang === "EN" ? "on" : ""}" onclick="MS.lang='EN';R()">EN</button></span>`;
+    const etatC = c ? `<div class="encart ${c.statut === "refusée" ? "alerte" : ""}" style="margin-top:0"><strong>${{ "en attente": t.attente, "acceptée": t.acceptee, "refusée": t.refusee, "remplacée": t.attente }[c.statut]}</strong> · ${t.demande} ${U.periode(c, MS.lang)}${c.message ? `<div class="doux petit" style="margin-top:4px">« ${esc(c.message)} »</div>` : ""}</div>` : "";
+    return `<div class="public"><div class="haut"><span class="marque">CMK France</span>${langue}</div>
+      <h1>${t.bonjour} ${esc(b.prenom)}</h1>
+      <div class="carte"><div class="ligne"><span>${t.sejour}</span><strong>${U.periode(s, MS.lang)} (${D.ecart(s.arrivee, s.depart)} ${MS.lang === "FR" ? "jours" : "days"})</strong></div><div class="ligne"><span>${t.pole}</span><strong>${esc(s.pole || s.souhaits[0])}</strong></div></div>
+      ${etatC}
+      <section class="carte"><h2>${t.changer}</h2><p class="doux petit" style="margin-top:-4px">${t.aide}</p>
+        ${surPlace ? `<div class="doux petit">${t.arrive}</div>` : `<label for="ms-arr">${t.arr}</label><input type="date" id="ms-arr" value="${s.arrivee}">`}
+        <label for="ms-dep">${t.dep}</label><input type="date" id="ms-dep" value="${c && c.statut === "en attente" ? c.depart : s.depart}">
+        <label for="ms-msg">${t.msg}</label><textarea id="ms-msg" rows="2"></textarea>
+        <button class="btn" style="min-height:52px;margin-top:12px;width:100%" onclick="A.demanderChangement(${s.id})">${t.envoyer}</button></section>
+      ${s.statut === "Arrivé·e" ? `<a class="btn sec" style="width:100%" href="#/attestation/${s.id}">${MS.lang === "FR" ? "Mon attestation de bénévolat (phase 2)" : "My volunteering certificate (phase 2)"}</a>` : ""}
+      <div class="doux petit" style="text-align:center">Démo : lien personnel du bénévole, reçu par e-mail.</div></div>`;
+  };
+  A.demanderChangement = function (id) {
+    const s = S.sejour(id), t = TM[MS.lang];
+    const a = document.getElementById("ms-arr") ? document.getElementById("ms-arr").value : s.arrivee, d = document.getElementById("ms-dep").value;
+    if (a === s.arrivee && d === s.depart) { U.toast(t.pareil); return; }
+    let refus = S.controles(a, d, s.pole || s.souhaits[0], null, MS.lang);
+    if (s.statut === "Arrivé·e") refus = refus.filter((x) => x.code !== "passe");
+    if (refus.length) { U.fenetre(t.refus, refus.map((x) => x.txt), t.modifier); return; }
+    S.demanderChangement(s, a, d, document.getElementById("ms-msg").value.trim());
+    S.sauver(); U.toast(t.envoye); R();
+  };
+
   window.vueEspace = function () {
     const liste = S.etat.sejours.filter((s) => ["Arrivé·e", "Parti·e"].includes(s.statut)).sort((a, b) => a.depart.localeCompare(b.depart));
-    const lignes = liste.map((s) => { const b = S.benevole(s.benevole), a = s.attestation; return `<div class="item"><div class="qui"><strong>${esc(S.nom(b))}</strong> <span class="doux">· départ ${D.court(s.depart)} · ${esc(s.pole)}</span></div>${a ? U.puce(a.statut, a.statut === "en cours" ? "neutre" : "ok") : U.puce("pas commencée", "neutre")}<a class="btn sec" href="#/attestation/${s.id}">Ouvrir le lien</a></div>`; }).join("");
+    const lignes = liste.map((s) => { const b = S.benevole(s.benevole), a = s.attestation; return `<div class="item"><div class="qui"><strong>${esc(S.nom(b))}</strong> <span class="doux">· départ ${D.court(s.depart)} · ${esc(s.pole)}</span></div>${a ? U.puce(a.statut, a.statut === "en cours" ? "neutre" : "ok") : U.puce("pas commencée", "neutre")}<a class="btn sec" href="#/attestation/${s.id}">Ouvrir le lien</a>${s.statut === "Arrivé·e" ? `<a class="btn lien" href="#/mon-sejour/${s.id}">Changer ses dates</a>` : ""}</div>`; }).join("");
+    const perso = S.etat.sejours.filter((s) => ["Acceptée", "Confirmée", "Arrivé·e"].includes(s.statut)).map((s) => { const b = S.benevole(s.benevole); return `<div class="item"><div class="qui"><strong>${esc(S.nom(b))}</strong> <span class="doux">· ${U.periode(s)} · ${esc(s.pole || s.souhaits[0])} · ${s.statut}</span></div><a class="btn sec" href="#/mon-sejour/${s.id}">Ouvrir son espace</a></div>`; }).join("");
+    if (V.espace === "perso") return U.entete("Démo : les liens personnels que les bénévoles reçoivent par e-mail", "Espaces bénévoles") + `<div class="encart">Depuis son espace, le bénévole peut demander à prolonger son séjour ou à changer ses dates. Essayez sur votre téléphone (ou en réduisant la fenêtre).</div><section class="carte">${perso}</section>`;
     return U.entete("Phase 2 · idée à valider — les liens que les bénévoles recevraient par e-mail", "Liens d'attestation") +
       `<div class="encart">Ouvrez un lien sur votre téléphone (ou réduisez la fenêtre) pour tester la justification du bénévolat comme un bénévole. Essayez <strong>Léa Martin</strong>, qui part le 30 septembre.</div>
       <section class="carte">${lignes}</section>`;
