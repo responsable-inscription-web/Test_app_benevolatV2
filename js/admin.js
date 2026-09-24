@@ -2,7 +2,7 @@
 (function () {
   const D = S.D, esc = U.esc;
   // État d'affichage (non enregistré)
-  const V = window.V = { filtre: "a-traiter", recherche: "", choisi: null, edition: false, pole: "Restaurant", semaine: 0, jour: null, ongletAtt: "signée", choisiAtt: null, ongletReg: "poles", modele: "rappel", langModele: "FR" };
+  const V = window.V = { filtre: "a-traiter", recherche: "", choisi: null, edition: false, pole: "Restaurant", semaine: 0, passe: 0, defil: null, allerAuj: true, jour: null, ongletAtt: "signée", choisiAtt: null, ongletReg: "poles", modele: "rappel", langModele: "FR" };
   const A = window.A = window.A || {};
   const ok = (msg) => { S.sauver(); if (msg) U.toast(msg); R(); };
 
@@ -237,40 +237,101 @@
   // =====================================================================
   // Planning d'un pôle
   // =====================================================================
-  window.vuePlanning = function () {
-    const r = S.etat.reglages, auj = S.aujourdhui();
-    const debut = D.ajouter(D.lundi(auj), V.semaine * 7), jours = D.plage(debut, 14);
-    const pole = S.pole(V.pole) || r.poles[0];
-    const sejours = S.etat.sejours.filter((s) => s.pole === pole.nom && jours.some((j) => S.presentLe(s, j))).sort((a, b) => a.arrivee.localeCompare(b.arrivee));
-    const opts = r.poles.filter((p) => p.actif).map((p) => `<option ${p.nom === pole.nom ? "selected" : ""}>${esc(p.nom)}</option>`).join("");
-    const tete = jours.map((j) => `<th class="${j === auj ? "aujourdhui" : ""}">${D.jour(j)}<br><strong style="font-size:14px">${D.court(j)}</strong></th>`).join("");
-    const evts = jours.map((j) => { const e = S.evenementLe(j); return `<td>${e.length ? `<div class="evt" title="${esc(e.join(" / "))}">${esc(e[0].replace("Retraite ", "Retr. "))}</div>` : ""}</td>`; }).join("");
-    const compte = jours.map((j) => { const n = S.auTravail(pole.nom, j), cap = S.capacite(pole.nom, j); return `<td class="compteur ${n < cap ? "bas" : "bon"}" title="${n} au travail / capacité ${cap}">${n}<span class="doux" style="font-weight:400">/${cap}</span></td>`; }).join("");
-    const semaines = [jours[0], jours[7]].map((l) => { const w = (pole.capaSemaines || {})[l]; return `<label class="inline" style="margin:0">Semaine du ${D.court(l)} <input type="number" min="0" style="width:70px" aria-label="Capacité semaine du ${D.court(l)}" value="${w != null ? w : pole.capacite}" onchange="A.capaSemaine('${esc(pole.nom)}','${l}',this.value)">${w != null ? "" : ` <span class="doux petit">(par défaut)</span>`}</label>`; }).join("");
-    const lignes = sejours.map((s) => {
-      const b = S.benevole(s.benevole);
-      const manque = S.blocsRepos(s).filter((x) => !x.ok).length;
-      const cases = jours.map((j) => {
-        const e = S.etatJour(s, j);
-        if (!e) return `<td class="j hors"></td>`;
-        const txt = { arr: "Arr" + (s.heureArrivee ? `<br><span style="font-weight:400">${s.heureArrivee}</span>` : ""), dep: "Dép", travail: "✓", repos: "Repos" }[e];
-        const clic = e === "travail" || e === "repos" ? ` onclick="A.repos(${s.id},'${j}')" title="Cliquer pour ${e === "repos" ? "retirer" : "poser"} un repos"` : "";
-        return `<td class="j ${e}"${clic}>${txt}</td>`;
-      }).join("");
-      return `<tr><td class="nom"><a href="#/benevoles/${b.id}">${esc(S.nom(b))}</a>${manque ? ` <span title="Repos insuffisants sur ${manque} bloc(s) de 7 jours">${U.puce("repos ?", "alerte")}</span>` : ""}</td>${cases}</tr>`;
+  // Planning défilant : toutes les semaines, de la semaine en cours (ou avant) à la dernière date de départ connue.
+  const PRESENTS = ["Confirmée", "Arrivé·e", "Parti·e"];
+  function plageDefilante(poles) {
+    const auj = S.aujourdhui();
+    const debut = D.ajouter(D.lundi(auj), -7 * (V.passe || 0));
+    const departs = S.etat.sejours.filter((s) => PRESENTS.includes(s.statut) && poles.includes(s.pole)).map((s) => s.depart);
+    let fin = departs.reduce((m, d) => (d > m ? d : m), D.ajouter(debut, 27));
+    fin = D.ajouter(D.lundi(fin), 6);
+    return D.plage(debut, D.ecart(debut, fin) + 1);
+  }
+  // Grille d'un ou plusieurs pôles. opts.satellite : vue du responsable (capacité modifiable semaine par semaine).
+  function grille(poles, jours, opts = {}) {
+    const auj = S.aujourdhui(), MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+    const lundi = (j) => (D.jourSemaine(j) === 1 ? " lundi" : "");
+    // Ligne des mois
+    const mois = []; jours.forEach((j) => { const m = j.slice(0, 7); if (!mois.length || mois[mois.length - 1].m !== m) mois.push({ m, n: 1 }); else mois[mois.length - 1].n++; });
+    const tMois = mois.map((x) => `<th colspan="${x.n}" class="mois">${MOIS[Number(x.m.slice(5)) - 1]} ${x.m.slice(0, 4)}</th>`).join("");
+    const tJours = jours.map((j) => `<th class="jour${lundi(j)}${j === auj ? " aujourdhui" : ""}" ${j === auj ? 'id="col-auj"' : ""}>${D.jour(j).replace(".", "")}<br><strong>${Number(j.slice(8))}</strong></th>`).join("");
+    const tEvts = jours.map((j) => { const e = S.evenementLe(j); return `<th class="ev${lundi(j)}">${e.length ? `<span class="pastev" title="${esc(e.join(" / "))}">${esc(e[0].split(" ")[0].slice(0, 5))}</span>` : ""}</th>`; }).join("");
+    const nb = jours.length + 1;
+    const blocs = poles.map((nom) => {
+      const p = S.pole(nom);
+      const ss = S.etat.sejours.filter((s) => s.pole === nom && PRESENTS.includes(s.statut) && s.depart >= jours[0] && s.arrivee <= jours[jours.length - 1]).sort((a, b) => a.arrivee.localeCompare(b.arrivee));
+      const bandeau = opts.satellite ? "" : `<tr class="bandeau"><td class="nom" colspan="1"><strong>${esc(nom)}</strong> <a class="petit" href="#/satellite/${encodeURIComponent(nom)}" target="_blank" rel="noopener" title="Vue du responsable de pôle">satellite ↗</a></td><td colspan="${jours.length}"></td></tr>`;
+      const capa = opts.satellite ? `<tr class="capa"><td class="nom doux petit">Capacité / jour (semaine)</td>${jours.filter((j) => D.jourSemaine(j) === 1 || j === jours[0]).map((l) => { const n = Math.min(7 - ((D.jourSemaine(l) + 6) % 7), D.ecart(l, jours[jours.length - 1]) + 1); const w = (p.capaSemaines || {})[D.lundi(l)]; return `<td colspan="${n}" class="lundi"><input type="number" min="0" aria-label="Capacité semaine du ${D.court(D.lundi(l))}" value="${w != null ? w : p.capacite}" onchange="A.capaSemaine('${esc(nom)}','${D.lundi(l)}',this.value)"${w != null ? "" : ' title="Capacité par défaut du pôle"'}></td>`; }).join("")}</tr>` : "";
+      const compte = `<tr><td class="nom doux petit">Au travail / capacité</td>${jours.map((j) => { const n = S.auTravail(nom, j), cap = S.capacite(nom, j); return `<td class="compteur${lundi(j)} ${n < cap ? "bas" : "bon"}" title="${n} au travail / capacité ${cap}">${n}<span class="sur">/${cap}</span></td>`; }).join("")}</tr>`;
+      const lignes = ss.map((s) => {
+        const b = S.benevole(s.benevole), manque = S.blocsRepos(s).filter((x) => !x.ok).length;
+        const cases = jours.map((j) => {
+          const e = S.etatJour(s, j);
+          if (!e) return `<td class="j hors${lundi(j)}"></td>`;
+          const txt = { arr: "Arr", dep: "Dép", travail: "✓", repos: "R" }[e];
+          const clic = e === "travail" || e === "repos" ? ` onclick="A.repos(${s.id},'${j}')" title="${esc(S.nom(b))} · ${D.fr(j)} : cliquer pour ${e === "repos" ? "retirer" : "poser"} un repos"` : ` title="${e === "arr" ? "Arrivée" + (s.heureArrivee ? " " + s.heureArrivee : "") : "Départ"}"`;
+          return `<td class="j ${e}${lundi(j)}"${clic}>${txt}</td>`;
+        }).join("");
+        const nomB = opts.satellite ? esc(S.nom(b)) : `<a href="#/benevoles/${b.id}">${esc(S.nom(b))}</a>`;
+        return `<tr><td class="nom">${nomB}${manque ? ` <span title="Repos insuffisants sur ${manque} bloc(s) de 7 jours">${U.puce("repos ?", "alerte")}</span>` : ""}</td>${cases}</tr>`;
+      }).join("") || `<tr><td class="nom doux petit">Aucun bénévole confirmé</td><td colspan="${jours.length}"></td></tr>`;
+      return bandeau + capa + compte + lignes;
     }).join("");
-    const bas = jours.filter((j) => S.auTravail(pole.nom, j) < S.capacite(pole.nom, j) && D.jourSemaine(j) !== 0).length;
-    return U.entete("Espace responsable de pôle", `${esc(pole.nom)} — du ${D.court(jours[0])} au ${D.court(jours[13])}`,
-      `<button class="btn sec" onclick="V.semaine--;R()">← Semaine précédente</button><button class="btn sec" onclick="V.semaine=0;R()">Aujourd'hui</button><button class="btn sec" onclick="V.semaine++;R()">Semaine suivante →</button><button class="btn" onclick="print()">Imprimer</button>`) +
-      `<div class="filtres noprint"><label for="pole" style="margin:0">Pôle</label><select id="pole" style="max-width:240px" onchange="V.pole=this.value;R()">${opts}</select></div>
-      <section class="carte noprint" style="padding:12px 18px"><div class="filtres" style="margin:0;align-items:center"><strong>Capacité au travail par jour</strong>${semaines}<span class="doux petit">Saisie par le responsable du pôle, semaine par semaine.</span></div></section>
-      <section class="carte planning"><table><thead><tr><th style="text-align:left">Bénévole</th>${tete}</tr></thead><tbody>
-        <tr><td class="nom doux petit" style="font-weight:400">Événements</td>${evts}</tr>
-        <tr><td class="nom doux petit" style="font-weight:400">Au travail / capacité</td>${compte}</tr>${lignes}</tbody></table>
-        ${sejours.length ? "" : `<div class="vide">Aucun bénévole confirmé sur ces deux semaines.</div>`}</section>
-      <div class="legende"><span><i style="background:var(--ok)"></i>Au travail</span><span><i style="background:var(--repos)"></i>Repos</span><span><i style="background:var(--info)"></i>Arrivée / départ</span><span><i style="background:var(--violet)"></i>Événement</span>
-        <span class="doux">Règle : ${r.regles.reposParBloc} repos par bloc de 7 jours de présence.</span>${bas ? `<span class="puce alerte">${bas} jour(s) sous la capacité</span>` : ""}</div>`;
+    return `<div class="defil" id="defil" onscroll="V.defil={x:this.scrollLeft,y:this.scrollTop}"><table class="gp"><thead>
+      <tr><th class="coin" rowspan="3">${opts.satellite ? "Bénévole" : "Pôle / bénévole"}</th>${tMois}</tr><tr>${tJours}</tr><tr>${tEvts}</tr></thead><tbody>${blocs}</tbody></table></div>`;
+  }
+  // Après l'affichage : garder la position de défilement, ou se placer sur aujourd'hui.
+  function defilement() {
+    window.apres = () => {
+      const d = document.getElementById("defil"); if (!d) return;
+      if (V.defil && !V.allerAuj) { d.scrollLeft = V.defil.x; d.scrollTop = V.defil.y; return; }
+      const c = document.getElementById("col-auj");
+      if (c) d.scrollLeft = Math.max(0, d.scrollLeft + c.getBoundingClientRect().left - d.getBoundingClientRect().left - d.querySelector(".coin").offsetWidth - 4);
+      V.allerAuj = false; V.defil = { x: d.scrollLeft, y: d.scrollTop };
+    };
+  }
+  A.aujourdhui = () => { V.allerAuj = true; R(); };
+  A.passe = (n) => { V.passe = Math.max(0, (V.passe || 0) + n); V.allerAuj = true; R(); };
+  const legendePlanning = () => `<div class="legende"><span><i style="background:var(--ok)"></i>✓ Au travail</span><span><i style="background:var(--repos)"></i>R Repos</span><span><i style="background:var(--info)"></i>Arrivée / départ</span><span><i style="background:var(--violet)"></i>Événement</span>
+      <span class="doux">Cliquer sur un jour pour poser ou retirer un repos. Règle : ${S.etat.reglages.regles.reposParBloc} repos par bloc de 7 jours de présence.</span></div>`;
+
+  window.vuePlanning = function () {
+    const poles = S.etat.reglages.poles.filter((p) => p.actif).map((p) => p.nom);
+    const jours = plageDefilante(poles);
+    defilement();
+    return U.entete("Tous les pôles, toutes les semaines à venir", "Planning global",
+      `<button class="btn sec" onclick="A.passe(4)">← 4 semaines passées</button>${V.passe ? `<button class="btn sec" onclick="A.passe(-${V.passe})">Masquer le passé</button>` : ""}<button class="btn sec" onclick="A.aujourdhui()">Aujourd'hui</button><button class="btn" onclick="print()">Imprimer</button>`) +
+      `<div class="doux petit" style="margin:-8px 0 10px">Du ${D.fr(jours[0])} au ${D.fr(jours[jours.length - 1])} (dernier départ connu). Faites défiler vers la droite pour les semaines suivantes. Chaque responsable a sa propre vue : lien « satellite » à côté du nom du pôle.</div>
+      <section class="carte" style="padding:6px">${grille(poles, jours)}</section>${legendePlanning()}`;
   };
+
+  // Satellite d'un pôle : la vue du responsable, sans le reste de l'outil.
+  window.vueSatellitePole = function (nom) {
+    const p = S.pole(nom);
+    if (!p) return `<div class="public"><div class="vide">Pôle introuvable.</div></div>`;
+    const jours = plageDefilante([nom]), auj = S.aujourdhui(), dans7 = D.ajouter(auj, 7);
+    defilement();
+    const mouv = S.etat.sejours.filter((s) => s.pole === nom && ["Confirmée", "Arrivé·e"].includes(s.statut) && ((s.arrivee >= auj && s.arrivee <= dans7) || (s.depart >= auj && s.depart <= dans7)))
+      .map((s) => { const b = S.benevole(s.benevole), arr = s.arrivee >= auj && s.arrivee <= dans7; return { d: arr ? s.arrivee : s.depart, t: `${arr ? "Arrivée" : "Départ"} de <strong>${esc(S.nom(b))}</strong>${arr && s.heureArrivee ? " vers " + s.heureArrivee : ""}` }; })
+      .sort((a, b) => a.d.localeCompare(b.d)).map((x) => `<div class="item"><div class="qui">${D.jour(x.d)} ${D.court(x.d)} · ${x.t}</div></div>`).join("") || `<div class="doux petit">Aucun mouvement dans les 7 jours.</div>`;
+    return `<div class="satellite"><div class="sat-haut"><div><div class="sur">Satellite · espace responsable de pôle</div><h1>Pôle ${esc(nom)}</h1><div class="doux petit">${esc(p.responsable || "responsable à renseigner")} · même base que la coordination : vos repos sont visibles tout de suite par tous.</div></div>
+      <div class="actions noprint"><button class="btn sec" onclick="A.passe(4)">← Semaines passées</button><button class="btn sec" onclick="A.aujourdhui()">Aujourd'hui</button><button class="btn" onclick="print()">Imprimer</button></div></div>
+      <section class="carte" style="padding:6px">${grille([nom], jours, { satellite: true })}</section>${legendePlanning()}
+      <section class="carte" style="margin-top:16px"><h2>Arrivées et départs des 7 prochains jours</h2>${mouv}</section>
+      <div class="doux petit noprint" style="margin-top:14px">Démo : dans l'outil réel, le responsable arrive ici par un lien personnel et ne voit que son pôle.</div></div>`;
+  };
+
+  // Satellite de l'accueil : arrivées, départs, navettes — sans le reste de l'outil.
+  window.vueSatelliteAccueil = function () {
+    const auj = S.aujourdhui(), dans7 = D.ajouter(auj, 7);
+    const semaine = S.etat.sejours.filter((s) => ["Confirmée", "Arrivé·e"].includes(s.statut) && s.arrivee > auj && s.arrivee <= dans7).sort((a, b) => a.arrivee.localeCompare(b.arrivee));
+    const lignes = semaine.map((s) => { const b = S.benevole(s.benevole); return `<tr><td>${D.jour(s.arrivee)} ${D.court(s.arrivee)}</td><td><strong>${esc(S.nom(b))}</strong><div class="doux petit">${esc(s.pole)}</div></td><td>${s.heureArrivee || "—"}</td><td>${s.navette === "Oui" ? U.puce("Navette", "ok") : s.navette === "Non" ? U.puce("Par ses moyens", "neutre") : U.puce("À confirmer", "alerte")}</td><td class="masquable">${esc(S.telAffiche(b))}</td></tr>`; }).join("");
+    return `<div class="satellite"><div class="sat-haut"><div><div class="sur">Satellite · accueil et navettes</div><h1>Accueil</h1><div class="doux petit">Même base que la coordination : les arrivées pointées ici sont visibles tout de suite par tous.</div></div></div>
+      ${window.vueArrivees(true)}
+      <section class="carte"><h2>Arrivées des 7 prochains jours</h2>${semaine.length ? `<table class="liste"><thead><tr><th>Jour</th><th>Bénévole</th><th>Heure</th><th>Transport</th><th class="masquable">Téléphone</th></tr></thead><tbody>${lignes}</tbody></table>` : `<div class="vide">Aucune arrivée prévue.</div>`}</section>
+      <div class="doux petit" style="margin-top:14px">Démo : dans l'outil réel, l'accueil arrive ici par son propre lien et ne voit ni les demandes, ni la santé, ni les commentaires internes.</div></div>`;
+  };
+
   A.capaSemaine = function (nom, lundi, v) {
     const p = S.pole(nom); p.capaSemaines = p.capaSemaines || {};
     if (v === "") delete p.capaSemaines[lundi]; else p.capaSemaines[lundi] = Number(v);
@@ -304,7 +365,7 @@
   // =====================================================================
   // Arrivées et navettes
   // =====================================================================
-  window.vueArrivees = function () {
+  window.vueArrivees = function (satellite) {
     const j = V.jour || S.aujourdhui(), r = S.etat.reglages.regles;
     const arr = S.etat.sejours.filter((s) => s.arrivee === j && ["Confirmée", "Arrivé·e"].includes(s.statut)).sort((a, b) => (a.heureArrivee || "99").localeCompare(b.heureArrivee || "99"));
     const dep = S.etat.sejours.filter((s) => s.depart === j && ["Arrivé·e", "Parti·e"].includes(s.statut));
@@ -318,7 +379,7 @@
       <td>${a && a.statut !== "en cours" ? U.puce("Attestation " + a.statut, "ok") : U.puce("Attestation non signée", "alerte")}</td>
       <td>${a && a.statut !== "en cours" ? "" : `<button class="btn sec" onclick="A.lienAttestation(${s.id})">Envoyer le lien</button> <a class="btn lien" href="#/attestation/${s.id}">Ouvrir sur place</a>`}</td>
       <td><label class="inline"><input type="checkbox" ${s.statut === "Parti·e" ? "checked" : ""} onchange="A.parti(${s.id},this.checked)"> Parti·e</label></td></tr>`; };
-    return U.entete(`Accueil · plage navette bénévoles ${r.navettePlage}`, `Arrivées et départs du ${D.jour(j)} ${D.court(j)}`,
+    return (satellite ? "" : `<div class="encart noprint" style="margin-bottom:12px">L'accueil a sa propre vue : <a href="#/satellite-accueil" target="_blank" rel="noopener">satellite accueil ↗</a></div>`) + U.entete(`Accueil · plage navette bénévoles ${r.navettePlage}`, `Arrivées et départs du ${D.jour(j)} ${D.court(j)}`,
       `<button class="btn sec" onclick="V.jour='${D.ajouter(j, -1)}';R()">← Veille</button><input type="date" aria-label="Choisir le jour" value="${j}" onchange="V.jour=this.value;R()" style="max-width:170px"><button class="btn sec" onclick="V.jour='${D.ajouter(j, 1)}';R()">Lendemain →</button><button class="btn" onclick="print()">Imprimer pour le chauffeur</button>`) +
       `<div class="grille g3"><div class="carte"><div class="doux">Arrivées</div><div class="chiffre">${arr.length}</div></div><div class="carte"><div class="doux">Trajets de navette</div><div class="chiffre">${nav.length}</div><div class="doux petit">${nav.map((s) => (s.heureArrivee || "heure ?") + " " + S.benevole(s.benevole).prenom).join(" · ") || "—"}</div></div><div class="carte"><div class="doux">Départs</div><div class="chiffre">${dep.length}</div></div></div>
       <section class="carte"><h2>Arrivées</h2>${arr.length ? `<table class="liste"><thead><tr><th>Bénévole</th><th>Heure (gare ou sur place)</th><th>Transport</th><th class="masquable">Couchage</th><th class="masquable">Téléphone</th><th></th></tr></thead><tbody>${arr.map(ligneArr).join("")}</tbody></table>` : `<div class="vide">Aucune arrivée ce jour-là.</div>`}</section>
@@ -407,9 +468,10 @@
       <td style="width:110px"><input type="number" min="0" aria-label="Capacité par défaut" value="${p.capacite}" onchange="A.pole(${i},'capacite',Number(this.value))"></td>
       <td style="width:110px"><input type="number" min="0" aria-label="Durée minimale" value="${p.dureeMin ?? 8}" onchange="A.pole(${i},'dureeMin',Number(this.value))"></td>
       <td><input type="email" aria-label="Responsable" value="${esc(p.responsable)}" placeholder="adresse du responsable" onchange="A.pole(${i},'responsable',this.value)"></td>
-      <td class="centre"><input type="checkbox" aria-label="Actif" ${p.actif ? "checked" : ""} onchange="A.pole(${i},'actif',this.checked)"></td></tr>`).join("");
+      <td class="centre"><input type="checkbox" aria-label="Actif" ${p.actif ? "checked" : ""} onchange="A.pole(${i},'actif',this.checked)"></td>
+      <td><a href="#/satellite/${encodeURIComponent(p.nom)}" target="_blank" rel="noopener">Ouvrir ↗</a></td></tr>`).join("");
     return `<section class="carte"><h2>Pôles</h2><div class="doux petit" style="margin:-6px 0 10px">La même liste sert au formulaire, aux affectations et aux plannings. Un pôle inactif disparaît du formulaire. La durée minimale bloque l'envoi du formulaire (0 = pas de minimum). Les responsables ajustent la capacité semaine par semaine dans leur planning.</div>
-      <table class="liste"><thead><tr><th>Nom</th><th>Capacité par défaut / jour</th><th>Durée min. (jours)</th><th>Responsable (accès à son planning)</th><th class="centre">Actif</th></tr></thead><tbody>${lignes}</tbody></table>
+      <table class="liste"><thead><tr><th>Nom</th><th>Capacité par défaut / jour</th><th>Durée min. (jours)</th><th>Responsable (accès à son planning)</th><th class="centre">Actif</th><th>Satellite</th></tr></thead><tbody>${lignes}</tbody></table>
       <div class="actions" style="margin-top:12px"><button class="btn" onclick="A.ajoutPole()">+ Ajouter un pôle</button></div></section>`;
   }
   A.pole = (i, k, v) => { S.etat.reglages.poles[i][k] = v; ok("Pôle mis à jour"); };
